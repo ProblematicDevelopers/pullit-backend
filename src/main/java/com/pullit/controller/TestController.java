@@ -27,7 +27,7 @@ public class TestController {
         
         Map<String, Object> response = new HashMap<>();
         response.put("status", "OK");
-        response.put("message", "Backend server is running");
+        response.put("message", "Backend server is runningaaaaaa");
         response.put("timestamp", LocalDateTime.now());
         
         return ResponseEntity.ok(response);
