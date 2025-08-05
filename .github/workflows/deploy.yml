@@ -1,4 +1,4 @@
-name: Backend Deploy
+name: Backend Zero Downtime Deploy
 
 on:
   push:
@@ -17,31 +17,26 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
     
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-    
     - name: Build application
-      run: ./gradlew build -x test
+      run: |
+        chmod +x gradlew
+        ./gradlew build -x test
     
     - name: Build Docker image
       run: |
         docker build -t pullit-backend:${{ github.sha }} .
-        docker tag pullit-backend:${{ github.sha }} pullit-backend:latest
+        docker save pullit-backend:${{ github.sha }} | gzip > pullit-backend.tar.gz
     
-    - name: Save Docker image
-      run: |
-        docker save pullit-backend:latest | gzip > pullit-backend.tar.gz
-    
-    - name: Copy files to EC2
+    - name: Copy to EC2
       uses: appleboy/scp-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        source: "pullit-backend.tar.gz"
+        source: "pullit-backend.tar.gz,scripts/deploy.sh"
         target: "/home/ubuntu/app/pullit/backend"
     
-    - name: Deploy to EC2
+    - name: Deploy with zero downtime
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
@@ -49,20 +44,5 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           cd /home/ubuntu/app/pullit/backend
-          
-          # Docker 이미지 로드
-          docker load < pullit-backend.tar.gz
-          
-          # 기존 컨테이너 중지 및 제거
-          docker-compose down
-          
-          # 새 컨테이너 시작
-          docker-compose up -d
-          
-          # 헬스체크 (옵션)
-          sleep 10
-          curl -f http://localhost:8080/api/test/health || exit 1
-          
-          # 정리
-          rm pullit-backend.tar.gz
-          docker image prune -f
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh ${{ github.sha }}

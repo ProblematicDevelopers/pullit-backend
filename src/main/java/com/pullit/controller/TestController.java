@@ -52,7 +52,7 @@ public class TestController {
         log.info("CORS test endpoint called");
         
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "CORS test successful");
+        response.put("message", "안녕~~");
         response.put("backend", "Spring Boot");
         response.put("frontend", "Vue.js");
         response.put("timestamp", LocalDateTime.now());
