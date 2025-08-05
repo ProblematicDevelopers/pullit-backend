@@ -45,6 +45,9 @@ jobs:
         script: |
           cd /home/ubuntu/app/pullit
           
+          # 환경변수 로드 (.bashrc나 .profile에서)
+          source ~/.bashrc || true
+          
           # Docker 이미지 로드
           docker load < pullit-backend.tar.gz
           
@@ -52,7 +55,7 @@ jobs:
           docker-compose stop backend || true
           docker-compose rm -f backend || true
           
-          # 새 컨테이너 시작
+          # 새 컨테이너 시작 (.env 파일이 있으면 자동으로 읽음)
           docker-compose up -d backend
           
           # 이미지 파일 정리
