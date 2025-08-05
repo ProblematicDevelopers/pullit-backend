@@ -1,4 +1,4 @@
-name: Backend Zero Downtime Deploy
+name: Backend Deploy
 
 on:
   push:
@@ -24,8 +24,8 @@ jobs:
     
     - name: Build Docker image
       run: |
-        docker build -t pullit-backend:${{ github.sha }} .
-        docker save pullit-backend:${{ github.sha }} | gzip > pullit-backend.tar.gz
+        docker build -t pullit-backend:latest .
+        docker save pullit-backend:latest | gzip > pullit-backend.tar.gz
     
     - name: Copy to EC2
       uses: appleboy/scp-action@master
@@ -33,16 +33,32 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        source: "pullit-backend.tar.gz,scripts/deploy.sh"
-        target: "/home/ubuntu/app/pullit/backend"
+        source: "pullit-backend.tar.gz"
+        target: "/home/ubuntu/app/pullit"
     
-    - name: Deploy with zero downtime
+    - name: Deploy on EC2
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          cd /home/ubuntu/app/pullit/backend
-          chmod +x scripts/deploy.sh
-          ./scripts/deploy.sh ${{ github.sha }}
+          cd /home/ubuntu/app/pullit
+          
+          # Docker 이미지 로드
+          docker load < pullit-backend.tar.gz
+          
+          # 기존 컨테이너 중지 및 삭제
+          docker-compose stop backend || true
+          docker-compose rm -f backend || true
+          
+          # 새 컨테이너 시작
+          docker-compose up -d backend
+          
+          # 이미지 파일 정리
+          rm -f pullit-backend.tar.gz
+          
+          # 상태 확인
+          docker-compose ps
+          
+          echo "Backend deployment completed successfully!"
