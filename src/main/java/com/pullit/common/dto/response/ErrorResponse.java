@@ -1,4 +1,4 @@
-package com.pullit.common.dto;
+package com.pullit.common.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.pullit.common.exception.ErrorCode;
