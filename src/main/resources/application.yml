@@ -30,7 +30,11 @@ spring:
           max-active: 10
           max-idle: 10
           min-idle: 5
-        
+  cache:
+    type: redis
+    redis:
+      time-to-live: 360000
+
 server:
   port: 8080
 

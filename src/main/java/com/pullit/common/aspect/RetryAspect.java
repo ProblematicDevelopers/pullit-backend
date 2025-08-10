@@ -35,7 +35,7 @@ public class RetryAspect {
                 Object result = joinPoint.proceed();
                 
                 if (attempt > 1) {
-                    log.info("✅ 재시도 성공: {} - 시도 횟수: {}/{}", methodName, attempt, maxAttempts);
+                    log.info("재시도 성공: {} - 시도 횟수: {}/{}", methodName, attempt, maxAttempts);
                 }
                 
                 return result;
@@ -57,7 +57,7 @@ public class RetryAspect {
                 
                 if (attempt < maxAttempts) {
                     long currentDelay = (long) (delay * Math.pow(multiplier, attempt - 1));
-                    log.warn("⚠️ 메소드 실행 실패: {} - 시도 {}/{} - {}ms 후 재시도 - 에러: {}", 
+                    log.warn("메소드 실행 실패: {} - 시도 {}/{} - {}ms 후 재시도 - 에러: {}",
                         methodName, attempt, maxAttempts, currentDelay, e.getMessage());
                     
                     try {
@@ -67,7 +67,7 @@ public class RetryAspect {
                         throw new RuntimeException("재시도 대기 중 인터럽트 발생", ie);
                     }
                 } else {
-                    log.error("❌ 모든 재시도 실패: {} - 최대 시도 횟수 {} 도달", methodName, maxAttempts);
+                    log.error("모든 재시도 실패: {} - 최대 시도 횟수 {} 도달", methodName, maxAttempts);
                 }
             }
         }
