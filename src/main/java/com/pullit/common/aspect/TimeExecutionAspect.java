@@ -40,17 +40,17 @@ public class TimeExecutionAspect {
             
             // 경고 임계값 초과 시 WARN 로그
             if (executionTime > timeExecution.warnThreshold()) {
-                log.warn("⚠️ 메소드 실행 시간 초과: {} - {}ms (임계값: {}ms)",
+                log.warn("메소드 실행 시간 초과: {} - {}ms (임계값: {}ms)",
                     methodName, executionTime, timeExecution.warnThreshold());
             } else {
-                log.info("✅ 메소드 실행 완료: {} - {}ms", methodName, executionTime);
+                log.info(" 메소드 실행 완료: {} - {}ms", methodName, executionTime);
             }
             
             return result;
             
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
-            log.error("❌ 메소드 실행 실패: {} - {}ms - 에러: {}", 
+            log.error("메소드 실행 실패: {} - {}ms - 에러: {}",
                 methodName, executionTime, e.getMessage(), e);
             throw e;
         }
