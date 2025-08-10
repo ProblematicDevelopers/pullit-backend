@@ -16,8 +16,6 @@ public final class SecurityConstants {
         "/api/auth/login",
         "/api/auth/register",
         "/api/auth/refresh",
-        "/api/questions/public/**",  // 공개 문제 조회
-        "/api/exams/public/**",      // 공개 시험 조회
         "/swagger-ui/**",
         "/v3/api-docs/**",
         "/swagger-resources/**",
