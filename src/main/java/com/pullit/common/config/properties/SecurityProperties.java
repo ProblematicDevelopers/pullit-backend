@@ -1,4 +1,4 @@
-package com.pullit.config.properties;
+package com.pullit.common.config.properties;
 
 import lombok.Getter;
 import lombok.Setter;
