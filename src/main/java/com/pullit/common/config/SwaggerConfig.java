@@ -1,4 +1,4 @@
-package com.pullit.config;
+package com.pullit.common.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
