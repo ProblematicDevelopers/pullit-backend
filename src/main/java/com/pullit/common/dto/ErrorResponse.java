@@ -28,7 +28,6 @@ public class ErrorResponse {
     private int status;
     private String traceId;
 
-    // 기본 에러 응답 생성
     public static ErrorResponse of(String code, String message, String path, int status) {
         return ErrorResponse.builder()
                 .code(code)
@@ -39,7 +38,6 @@ public class ErrorResponse {
                 .build();
     }
 
-    // 상세 메시지 포함 에러 응답 생성
     public static ErrorResponse of(String code, String message, String detail, String path, int status) {
         return ErrorResponse.builder()
                 .code(code)
@@ -51,7 +49,6 @@ public class ErrorResponse {
                 .build();
     }
 
-    // 필드 검증 에러 응답 생성
     public static ErrorResponse ofFieldErrors(String code, String message, Map<String, String> fieldErrors, String path, int status) {
         return ErrorResponse.builder()
                 .code(code)
@@ -63,7 +60,6 @@ public class ErrorResponse {
                 .build();
     }
 
-    // ErrorCode enum 사용하여 생성
     public static ErrorResponse from(ErrorCode errorCode, String path) {
         return ErrorResponse.builder()
                 .code(errorCode.getCode())
@@ -74,7 +70,6 @@ public class ErrorResponse {
                 .build();
     }
 
-    // ErrorCode와 상세 메시지 사용하여 생성
     public static ErrorResponse from(ErrorCode errorCode, String detail, String path) {
         return ErrorResponse.builder()
                 .code(errorCode.getCode())
@@ -86,7 +81,6 @@ public class ErrorResponse {
                 .build();
     }
 
-    // 추적 ID 설정 메소드
     public ErrorResponse withTraceId(String traceId) {
         this.traceId = traceId;
         return this;
