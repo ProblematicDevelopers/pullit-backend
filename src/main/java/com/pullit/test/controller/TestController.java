@@ -1,4 +1,4 @@
-package com.pullit.controller;
+package com.pullit.test.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,7 +1,6 @@
-package com.pullit.config;
+package com.pullit.common.config;
 
-import com.pullit.common.constants.SecurityConstants;
-import com.pullit.config.properties.SecurityProperties;
+import com.pullit.common.config.properties.SecurityProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
