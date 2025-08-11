@@ -1,5 +1,5 @@
 ---
-name: Bug Report
+name: Bug report
 about: 동작하지 않거나 오류가 발생한 문제를 보고해주세요.
 title: "[BUG] title"
 labels: bug

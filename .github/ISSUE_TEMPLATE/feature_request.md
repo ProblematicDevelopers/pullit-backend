@@ -1,8 +1,8 @@
 ---
 name: Feature request
 about: 추가하고 싶은 기능이나 개선 아이디어가 있을 때 사용해주세요.
-title: "[FEAT] 제목"
-labels: bug
+title: "[FEAT] title"
+labels: enhancement
 assignees: ''
 
 ---
