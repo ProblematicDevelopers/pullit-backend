@@ -18,7 +18,7 @@ import java.util.List;
 @ToString(exclude = {"chapters", "items"})
 public class Subject {
     @Id
-    @Column(name = "subject_name", length = 100)
+    @Column(name = "subject_id")
     private Long subjectId;
 
     @Column(name = "subject_name", length = 100)
