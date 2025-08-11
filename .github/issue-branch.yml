@@ -1,25 +1,25 @@
-branchName: "${issue.labels}/#${issue.number} ${issue.title}"
+branchName: "${prefix}/#${issue.number} ${issue.title^}"
 autoCloseIssue: true
 copyIssueLabelsToPR: true
 copyIssueAssigneeToPR: true
 branches:
-  - label: 🐛 Bug
+  - label: Bug
     prefix: bugfix/
-  - label: 🩹 Simple Fix
+  - label: Simple Fix
     prefix: bugfix/
-  - label: 🚨 HOTFIX
+  - label: HOTFIX
     prefix: hotfix/
-  - label: 👷 CI
+  - label: CI
     prefix: env/
-  - label: ⚙️ Setting
+  - label: Setting
     prefix: env/
-  - label: 💄 Design
-    prefix: feature/
-  - label: ✨ Feature
-    prefix: feature/
-  - label: ♻️ Refactor
-    prefix: feature/
-  - label: ✅ Test
-    prefix: feature/
-  - label: 📝 Document
+  - label: Design
+    prefix: feat/
+  - label: Feature
+    prefix: feat/
+  - label: Refactor
+    prefix: feat/
+  - label: Test
+    prefix: feat/
+  - label: Document
     prefix: docs/
