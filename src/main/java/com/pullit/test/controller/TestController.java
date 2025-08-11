@@ -37,6 +37,7 @@ public class TestController {
     @PostMapping("/echo")
     public ResponseEntity<Map<String, Object>> echo(@RequestBody Map<String, Object> request) {
         log.info("Echo endpoint called with data: {}", request);
+
         
         Map<String, Object> response = new HashMap<>();
         response.put("received", request);
