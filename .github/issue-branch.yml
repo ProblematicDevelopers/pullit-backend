@@ -1,4 +1,5 @@
-branchName: "${prefix}/#${issue.number} ${issue.title^}"
+branchName: "#${issue.number} ${issue.title^}"
+gitSafeReplacementChar: "-"
 autoCloseIssue: true
 copyIssueLabelsToPR: true
 copyIssueAssigneeToPR: true
