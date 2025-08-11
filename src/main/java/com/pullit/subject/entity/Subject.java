@@ -1,5 +1,6 @@
 package com.pullit.subject.entity;
 
+import com.pullit.chapter.entity.Chapter;
 import com.pullit.common.embedded.StringCodeNamePair;
 import com.pullit.item.entity.ItemMetadata;
 import jakarta.persistence.*;
@@ -58,9 +59,9 @@ public class Subject {
     })
     private StringCodeNamePair area;
 
-//    @OneToMany(mappedBy = "subject", fetch = FetchType.LAZY)
-//    @Builder.Default
-//    private List<Chapter> chapters = new ArrayList<>();
+    @OneToMany(mappedBy = "subject", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Chapter> chapters = new ArrayList<>();
 
     @OneToMany(mappedBy = "subject", fetch = FetchType.LAZY)
     @Builder.Default
