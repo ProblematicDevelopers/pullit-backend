@@ -1,5 +1,6 @@
 package com.pullit.subject.entity;
 
+import com.pullit.chapter.entity.Chapter;
 import com.pullit.common.embedded.StringCodeNamePair;
 import com.pullit.item.entity.ItemMetadata;
 import jakarta.persistence.*;
@@ -17,7 +18,7 @@ import java.util.List;
 @ToString(exclude = {"chapters", "items"})
 public class Subject {
     @Id
-    @Column(name = "subject_name", length = 100)
+    @Column(name = "subject_id")
     private Long subjectId;
 
     @Column(name = "subject_name", length = 100)
@@ -58,9 +59,9 @@ public class Subject {
     })
     private StringCodeNamePair area;
 
-//    @OneToMany(mappedBy = "subject", fetch = FetchType.LAZY)
-//    @Builder.Default
-//    private List<Chapter> chapters = new ArrayList<>();
+    @OneToMany(mappedBy = "subject", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Chapter> chapters = new ArrayList<>();
 
     @OneToMany(mappedBy = "subject", fetch = FetchType.LAZY)
     @Builder.Default
