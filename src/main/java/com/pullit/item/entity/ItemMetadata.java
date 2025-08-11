@@ -3,6 +3,7 @@ package com.pullit.item.entity;
 import com.pullit.common.entity.BaseTimeEntity;
 import com.pullit.item.embedded.ChapterHierarchy;
 import com.pullit.item.embedded.CodeNamePair;
+import com.pullit.subject.entity.Subject;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,8 +19,9 @@ public class ItemMetadata extends BaseTimeEntity {
     @Column(name = "item_id", nullable = false, length = 50)
     private Long itemId;
 
-    @Column(name = "subject_id")
-    private Long subjectId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id")
+    private Subject subject;
 
     @Embedded
     @AttributeOverrides({
@@ -82,7 +84,7 @@ public class ItemMetadata extends BaseTimeEntity {
     }
 
     public boolean isComplete() {
-        return itemId != null && subjectId != null
+        return itemId != null && subject != null
                 && questionForm != null && questionForm.isValid()
                 && difficulty != null && difficulty.isValid();
     }
