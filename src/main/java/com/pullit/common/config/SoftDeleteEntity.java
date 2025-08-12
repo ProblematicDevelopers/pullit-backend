@@ -1,6 +1,6 @@
 package com.pullit.common.config;
 
-import com.pullit.common.entity.BaseEntity;
+import com.pullit.common.entity.FullAuditEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Getter
 @MappedSuperclass
 @SQLDelete(sql= "UPDATE {tableName} SET deleted_at = NOW() WHERE id= ?")
-public class SoftDeleteEntity extends BaseEntity {
+public class SoftDeleteEntity extends FullAuditEntity {
 
     @Setter
     @Column(name ="deleted_at")
