@@ -1,8 +1,7 @@
-package com.pullit.subject.entity;
+package com.pullit.item.entity;
 
 import com.pullit.chapter.entity.Chapter;
 import com.pullit.common.embedded.StringCodeNamePair;
-import com.pullit.item.entity.ItemMetadata;
 import jakarta.persistence.*;
 import lombok.*;
 

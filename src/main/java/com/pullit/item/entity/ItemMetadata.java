@@ -3,7 +3,6 @@ package com.pullit.item.entity;
 import com.pullit.common.entity.BaseTimeEntity;
 import com.pullit.item.embedded.ChapterHierarchy;
 import com.pullit.item.embedded.CodeNamePair;
-import com.pullit.subject.entity.Subject;
 import jakarta.persistence.*;
 import lombok.*;
 

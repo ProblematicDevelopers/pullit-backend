@@ -3,7 +3,7 @@ package com.pullit.exam.entity;
 import com.pullit.common.entity.FullAuditEntity;
 import com.pullit.exam.enums.ExamVisibility;
 import com.pullit.item.embedded.CodeNamePair;
-import com.pullit.subject.entity.Subject;
+import com.pullit.item.entity.Subject;
 import jakarta.persistence.*;
 import lombok.*;
 

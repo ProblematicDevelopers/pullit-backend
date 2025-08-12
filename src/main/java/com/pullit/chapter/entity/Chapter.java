@@ -2,13 +2,9 @@ package com.pullit.chapter.entity;
 
 import com.pullit.common.embedded.StringCodeNamePair;
 import com.pullit.item.embedded.CodeNamePair;
-import com.pullit.item.entity.ItemMetadata;
-import com.pullit.subject.entity.Subject;
+import com.pullit.item.entity.Subject;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "chapters")

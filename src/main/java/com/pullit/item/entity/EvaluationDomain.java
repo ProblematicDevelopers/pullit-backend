@@ -1,6 +1,5 @@
-package com.pullit.exam.entity;
+package com.pullit.item.entity;
 
-import com.pullit.subject.entity.Subject;
 import jakarta.persistence.*;
 import lombok.*;
 
