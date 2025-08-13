@@ -16,7 +16,10 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
-    
+
+  elasticsearch:
+    uris: ${ES_HOSTS:http://localhost:9200}
+
 logging:
   level:
     org.hibernate.SQL: DEBUG
