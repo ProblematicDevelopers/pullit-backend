@@ -1,5 +1,9 @@
 package com.pullit.user.service;
 
+import com.pullit.user.dto.request.PasswordChangeRequest;
+import com.pullit.user.dto.request.UserCreateRequest;
+import com.pullit.user.dto.request.UserUpdateRequest;
+import com.pullit.user.dto.response.UserResponse;
 import com.pullit.user.entity.User;
 
 import java.util.Optional;
@@ -12,13 +16,13 @@ public interface UserService {
     Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
 
-    // 사용자 생성
+//     사용자 생성
     UserResponse createUser(UserCreateRequest request);
 
-    // 사용자 정보 수정
+//     사용자 정보 수정
     UserResponse updateUser(Long userId, UserUpdateRequest request);
 
-    // 비밀번호 변경
+//     비밀번호 변경
     void changePassword(Long userId, PasswordChangeRequest request);
 
     // 사용자 존재 여부 확인
