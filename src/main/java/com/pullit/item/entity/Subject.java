@@ -23,6 +23,9 @@ public class Subject {
     @Column(name = "subject_name", length = 100)
     private String subjectName;
 
+    @Column(name = "subject_thumbnail", length = 500)
+    private String subjectThumbnail;
+
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "code", column = @Column(name = "curriculum_code", length = 10)),
