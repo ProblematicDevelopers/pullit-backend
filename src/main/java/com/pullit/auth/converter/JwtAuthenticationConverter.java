@@ -1,5 +1,7 @@
-package com.pullit.user.security;
+package com.pullit.auth.converter;
 
+import com.pullit.auth.authentication.CustomJwtAuthenticationToken;
+import com.pullit.auth.authentication.CustomUserDetails;
 import com.pullit.user.entity.UserRole;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;

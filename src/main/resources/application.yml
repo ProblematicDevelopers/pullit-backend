@@ -14,7 +14,7 @@ spring:
       
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: true
@@ -34,6 +34,12 @@ spring:
     type: redis
     redis:
       time-to-live: 360000
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jws-algorithms: RS256
+          public-key-location: classpath:keys/public-key.pem
 
 server:
   port: 8080
@@ -68,11 +74,7 @@ security:
       - "*"
     allow-credentials: true
     max-age: 3600
-  jwt:
-    # 개발 환경용 RSA 키 (실제 운영에서는 파일 경로나 환경변수 사용)
-    private-key: classpath:keys/private-key.pem
-    public-key: classpath:keys/public-key.pem
-  
+
 logging:
   level:
     root: INFO
@@ -88,3 +90,8 @@ logging:
     rollingpolicy:
       max-file-size: 10MB
       max-history: 30
+jwt:
+  issuer: pullit
+  access-token-expiration: 86400  # 24시간 (초)
+  refresh-token-expiration: 604800 # 7일 (초)
+  private-key-location: classpath:keys/private-key.pem

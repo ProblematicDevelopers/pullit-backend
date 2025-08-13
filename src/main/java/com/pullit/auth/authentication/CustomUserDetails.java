@@ -1,4 +1,4 @@
-package com.pullit.user.security;
+package com.pullit.auth.authentication;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pullit.user.entity.UserRole;

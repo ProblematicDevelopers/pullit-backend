@@ -17,6 +17,7 @@ public enum ErrorCode {
     ENTITY_NOT_FOUND("COMMON_006", "요청한 리소스를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     INVALID_JSON("COMMON_007", "JSON 형식이 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
     MISSING_REQUEST_PARAMETER("COMMON_008", "필수 요청 파라미터가 누락되었습니다.", HttpStatus.BAD_REQUEST),
+    TOO_MANY_REQUESTS("COMMON_009", "너무 많은 요청입니다. 잠시 후 다시 시도해주세요.", HttpStatus.TOO_MANY_REQUESTS),
 
     // ========== 인증/인가 에러 (AUTH) ==========
     UNAUTHORIZED("AUTH_001", "인증이 필요합니다.", HttpStatus.UNAUTHORIZED),
@@ -49,6 +50,7 @@ public enum ErrorCode {
     RESOURCE_NOT_AVAILABLE("BIZ_003", "리소스를 사용할 수 없습니다.", HttpStatus.CONFLICT),
     INVALID_STATUS_TRANSITION("BIZ_004", "유효하지 않은 상태 변경입니다.", HttpStatus.BAD_REQUEST),
     QUOTA_EXCEEDED("BIZ_005", "할당량을 초과했습니다.", HttpStatus.TOO_MANY_REQUESTS),
+
 
     // ========== 외부 API 관련 에러 (EXTERNAL) ==========
     EXTERNAL_API_ERROR("EXT_001", "외부 API 호출 중 오류가 발생했습니다.", HttpStatus.BAD_GATEWAY),
