@@ -1,7 +1,7 @@
 package com.pullit.item.service;
 
 import com.pullit.item.dao.SubjectRepository;
-import com.pullit.item.dto.SubjectDTO;
+import com.pullit.item.dto.response.SubjectResponse;
 import com.pullit.item.entity.Subject;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,9 +18,9 @@ public class SubjectServiceImpl implements SubjectService {
     }
 
     @Override
-    public List<SubjectDTO> findAllSubjectsOnly() {
-        return subjectRepository.findAllSubjectsOnly().stream()
-                .map(SubjectDTO::from)
+    public List<SubjectResponse> findAllSubjectsOnly() {
+        return subjectRepository.findAll().stream()
+                .map(SubjectResponse::from)
                 .toList();
     }
 }
