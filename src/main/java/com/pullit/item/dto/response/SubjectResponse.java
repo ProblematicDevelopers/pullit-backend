@@ -1,7 +1,8 @@
-package com.pullit.item.dto;
+package com.pullit.item.dto.response;
 
 import com.pullit.common.embedded.StringCodeNamePair;
 import com.pullit.item.entity.Subject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +16,8 @@ import java.util.stream.Collectors;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class SubjectDTO {
+@Schema(description = "교과서 목록")
+public class SubjectResponse {
     private Long subjectId;
     private String subjectName;
     private String subjectThumbnail;
@@ -35,10 +37,10 @@ public class SubjectDTO {
     private String areaCode;
     private String areaName;
 
-    public static SubjectDTO from(Subject s) {
+    public static SubjectResponse from(Subject s) {
         if (s == null) return null;
 
-        return SubjectDTO.builder()
+        return SubjectResponse.builder()
                 .subjectId(s.getSubjectId())
                 .subjectName(s.getSubjectName())
                 .subjectThumbnail(s.getSubjectThumbnail())
@@ -56,11 +58,11 @@ public class SubjectDTO {
     }
 
     /** 리스트 매핑 유틸 */
-    public static List<SubjectDTO> fromList(List<Subject> subjects) {
+    public static List<SubjectResponse> fromList(List<Subject> subjects) {
         if (subjects == null) return List.of();
         return subjects.stream()
                 .filter(Objects::nonNull)
-                .map(SubjectDTO::from)
+                .map(SubjectResponse::from)
                 .collect(Collectors.toList());
     }
 
