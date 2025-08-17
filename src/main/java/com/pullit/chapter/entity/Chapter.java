@@ -12,7 +12,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-@ToString(exclude = {"subject", "items"})
+@ToString(exclude = {"subject"})
 public class Chapter {
 
     @Id
