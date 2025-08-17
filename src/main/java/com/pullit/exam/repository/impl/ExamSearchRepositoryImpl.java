@@ -86,10 +86,10 @@ public class ExamSearchRepositoryImpl implements ExamSearchRepository {
                 exam.subject.subjectName,                   // subjectName
                 exam.largeChapter.code,              // chapterCode (대단원)
                 exam.largeChapter.name,              // chapterName (대단원)
-                Expressions.nullExpression(String.class),  // gradeCode (Exam에는 없음)
-                Expressions.nullExpression(String.class),  // gradeName (Exam에는 없음)
-                Expressions.nullExpression(String.class),  // termCode (Exam에는 없음)
-                Expressions.nullExpression(String.class),  // termName (Exam에는 없음)
+                exam.subject.grade.code,             // gradeCode - Subject에서 가져옴
+                exam.subject.grade.name,             // gradeName - Subject에서 가져옴
+                exam.subject.term.code,              // termCode - Subject에서 가져옴
+                exam.subject.term.name,              // termName - Subject에서 가져옴
                 exam.itemCount,
                 exam.visibility,
                 exam.previewUrl,                     // pdfUrl
@@ -181,9 +181,54 @@ public class ExamSearchRepositoryImpl implements ExamSearchRepository {
             }
         }
         
-        // 대단원 필터 (Exam만 가능)
-        if (request.getLargeChapterCode() != null) {
-            builder.and(exam.largeChapter.code.eq(request.getLargeChapterCode()));
+        // 학년 필터 추가 (Subject의 grade.code 사용)
+        if (StringUtils.hasText(request.getGradeCode())) {
+            // 여러 학년 코드 지원 (콤마로 구분)
+            String[] gradeCodes = request.getGradeCode().split(",");
+            if (gradeCodes.length == 1) {
+                builder.and(exam.subject.grade.code.eq(gradeCodes[0].trim()));
+            } else {
+                builder.and(exam.subject.grade.code.in(gradeCodes));
+            }
+        }
+        
+        // 학기 필터 추가 (Subject의 term.code 사용)
+        if (StringUtils.hasText(request.getTermCode())) {
+            // 여러 학기 코드 지원 (콤마로 구분)
+            String[] termCodes = request.getTermCode().split(",");
+            if (termCodes.length == 1) {
+                builder.and(exam.subject.term.code.eq(termCodes[0].trim()));
+            } else {
+                builder.and(exam.subject.term.code.in(termCodes));
+            }
+        }
+        
+        // 대단원 필터 (Exam만 가능) - 여러 대단원 지원
+        if (StringUtils.hasText(request.getLargeChapterCode())) {
+            String largeChapterStr = request.getLargeChapterCode();
+            if (largeChapterStr.contains(",")) {
+                // 여러 대단원 코드
+                String[] chapterCodes = largeChapterStr.split(",");
+                List<Long> chapterCodesList = new ArrayList<>();
+                for (String code : chapterCodes) {
+                    try {
+                        chapterCodesList.add(Long.parseLong(code.trim()));
+                    } catch (NumberFormatException e) {
+                        // 숫자가 아닌 경우 무시
+                    }
+                }
+                if (!chapterCodesList.isEmpty()) {
+                    builder.and(exam.largeChapter.code.in(chapterCodesList));
+                }
+            } else {
+                // 단일 대단원 코드
+                try {
+                    Long chapterCode = Long.parseLong(largeChapterStr);
+                    builder.and(exam.largeChapter.code.eq(chapterCode));
+                } catch (NumberFormatException e) {
+                    // 숫자가 아닌 경우 무시
+                }
+            }
         }
         
         // 공개 여부
@@ -291,10 +336,10 @@ public class ExamSearchRepositoryImpl implements ExamSearchRepository {
                 exam.subject.subjectName,
                 exam.largeChapter.code,
                 exam.largeChapter.name,
-                Expressions.nullExpression(String.class),
-                Expressions.nullExpression(String.class),
-                Expressions.nullExpression(String.class),
-                Expressions.nullExpression(String.class),
+                exam.subject.grade.code,  // gradeCode - Subject에서 가져옴
+                exam.subject.grade.name,  // gradeName - Subject에서 가져옴
+                exam.subject.term.code,   // termCode - Subject에서 가져옴
+                exam.subject.term.name,   // termName - Subject에서 가져옴
                 exam.itemCount,
                 exam.visibility,
                 exam.previewUrl,
@@ -370,10 +415,10 @@ public class ExamSearchRepositoryImpl implements ExamSearchRepository {
                 exam.subject.subjectName,
                 exam.largeChapter.code,
                 exam.largeChapter.name,
-                Expressions.nullExpression(String.class),
-                Expressions.nullExpression(String.class),
-                Expressions.nullExpression(String.class),
-                Expressions.nullExpression(String.class),
+                exam.subject.grade.code,  // gradeCode - Subject에서 가져옴
+                exam.subject.grade.name,  // gradeName - Subject에서 가져옴
+                exam.subject.term.code,   // termCode - Subject에서 가져옴
+                exam.subject.term.name,   // termName - Subject에서 가져옴
                 exam.itemCount,
                 exam.visibility,
                 exam.previewUrl,
@@ -468,7 +513,7 @@ public class ExamSearchRepositoryImpl implements ExamSearchRepository {
     @Override
     public Page<UnifiedExamResponse> findByLargeChapter(Long largeChapterCode, Pageable pageable) {
         ExamSearchRequest request = ExamSearchRequest.builder()
-            .largeChapterCode(largeChapterCode)
+            .largeChapterCode(String.valueOf(largeChapterCode))
             .build();
         
         // Exam 테이블에서만 검색

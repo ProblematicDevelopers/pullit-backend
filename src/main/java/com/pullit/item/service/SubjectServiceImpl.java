@@ -23,4 +23,9 @@ public class SubjectServiceImpl implements SubjectService {
                 .map(SubjectResponse::from)
                 .toList();
     }
+
+    @Override
+    public List<SubjectResponse> findByGradeCodeAndAreaCode(String gradeCode, String areaCode) {
+        return subjectRepository.findByGradeCodeAndAreaCode(gradeCode, areaCode).stream().map(SubjectResponse::from).toList();
+    }
 }
