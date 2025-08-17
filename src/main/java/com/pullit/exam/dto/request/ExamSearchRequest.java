@@ -47,8 +47,9 @@ public class ExamSearchRequest {
 
     /**
      * 대단원 코드 (Exam만 해당)
+     * 여러 대단원 선택 시 콤마로 구분 (예: "1001,1002,1003")
      */
-    private Long largeChapterCode;
+    private String largeChapterCode;
 
     // ===== UserExam 전용 검색 조건 =====
 

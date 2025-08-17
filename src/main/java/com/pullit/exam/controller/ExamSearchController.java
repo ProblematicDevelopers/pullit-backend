@@ -38,8 +38,10 @@ public class ExamSearchController {
             @ModelAttribute ExamSearchRequest request,
             @PageableDefault(size = 20, sort = "createdDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        log.info("통합 검색 요청: keyword={}, subjectId={}, visibility={}",
-                request.getKeyword(), request.getSubjectId(), request.getVisibility());
+        log.info("통합 검색 요청: keyword={}, subjectId={}, visibility={}, gradeCode={}, areaCode={}, termCode={}",
+                request.getKeyword(), request.getSubjectId(), request.getVisibility(), 
+                request.getGradeCode(), request.getAreaCode(), request.getTermCode());
+        log.debug("검색 요청 상세: {}", request);
 
         Page<UnifiedExamResponse> results = examSearchService.searchExams(request, pageable);
         return ResponseEntity.ok(results);
