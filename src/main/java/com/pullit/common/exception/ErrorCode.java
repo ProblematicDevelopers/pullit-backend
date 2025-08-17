@@ -18,6 +18,7 @@ public enum ErrorCode {
     INVALID_JSON("COMMON_007", "JSON 형식이 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
     MISSING_REQUEST_PARAMETER("COMMON_008", "필수 요청 파라미터가 누락되었습니다.", HttpStatus.BAD_REQUEST),
     TOO_MANY_REQUESTS("COMMON_009", "너무 많은 요청입니다. 잠시 후 다시 시도해주세요.", HttpStatus.TOO_MANY_REQUESTS),
+    CONSTANTS_NO_INSTANCES("COMMON_010", "해당하는 인스턴스가 존재하지 않습니다", HttpStatus.NO_CONTENT),
 
     // ========== 인증/인가 에러 (AUTH) ==========
     UNAUTHORIZED("AUTH_001", "인증이 필요합니다.", HttpStatus.UNAUTHORIZED),
