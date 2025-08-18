@@ -63,7 +63,11 @@ public class PropertyConfig {
             throw new IllegalStateException("JWT_PUBLIC_KEY environment variable is not set");
         }
         
-        String publicKeyPEM = publicKeyString
+        // Base64로 인코딩된 전체 PEM을 디코딩
+        String decodedPem = new String(Base64.getDecoder().decode(publicKeyString), StandardCharsets.UTF_8);
+        
+        // PEM 헤더/푸터 제거
+        String publicKeyPEM = decodedPem
                 .replace("-----BEGIN PUBLIC KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "")
                 .replaceAll("\\s", "");
@@ -107,7 +111,11 @@ public class PropertyConfig {
             throw new IllegalStateException("JWT_PRIVATE_KEY environment variable is not set");
         }
         
-        String privateKeyPEM = privateKeyString
+        // Base64로 인코딩된 전체 PEM을 디코딩
+        String decodedPem = new String(Base64.getDecoder().decode(privateKeyString), StandardCharsets.UTF_8);
+        
+        // PEM 헤더/푸터 제거
+        String privateKeyPEM = decodedPem
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
                 .replaceAll("\\s", "");
