@@ -9,4 +9,5 @@ public interface SubjectService {
     List<Subject> findByAll();
     List<SubjectResponse> findAllSubjectsOnly();
     List<SubjectResponse> findByGradeCodeAndAreaCode(String gradeCode, String areaCode);
+    SubjectResponse findById(Long id);
 }

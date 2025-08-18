@@ -28,4 +28,7 @@ public interface ItemMetadataRepository extends JpaRepository<ItemMetadata, Long
 
     // 지문별 문항 조회
     List<ItemMetadata> findByPassageId(Long passageId);
+
+    List<ItemMetadata> findBySubject_SubjectIdAndChapterHierarchy_LargeChapter_CodeInAndChapterHierarchy_MediumChapter_CodeIn(
+            Long subjectId, List<Long> largeChapterCodes, List<Long> mediumChapterCodes);
 }
