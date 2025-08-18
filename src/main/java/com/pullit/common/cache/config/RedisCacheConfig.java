@@ -25,10 +25,11 @@ import java.util.Map;
 @EnableCaching
 public class RedisCacheConfig {
 
-    @Bean
-    public LettuceConnectionFactory lettuceConnectionFactory() {
-        return new LettuceConnectionFactory();
-    }
+    // Spring Boot 자동 설정 사용 - 이 Bean을 제거하여 application.yml의 설정이 적용되도록 함
+    // @Bean
+    // public LettuceConnectionFactory lettuceConnectionFactory() {
+    //     return new LettuceConnectionFactory();
+    // }
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
