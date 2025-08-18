@@ -106,6 +106,17 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRateLimitExceeded(
+            RateLimitExceededException ex) {
+
+        log.warn("Rate limit exceeded: {}", ex.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiResponse.error(ex.getErrorCode()));
+    }
+
     @ExceptionHandler(NoHandlerFoundException.class)
     protected ResponseEntity<ApiResponse<Void>> handleNoHandlerFoundException(NoHandlerFoundException e) {
         log.error("NoHandlerFoundException: {}", e.getMessage(), e);

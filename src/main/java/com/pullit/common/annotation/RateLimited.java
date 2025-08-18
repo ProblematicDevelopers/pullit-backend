@@ -15,4 +15,6 @@ public @interface RateLimited {
     int duration() default 1;
     TimeUnit timeUnit() default TimeUnit.MINUTES;
     String key() default "";
+
+
 }

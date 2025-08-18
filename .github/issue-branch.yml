@@ -1,0 +1,26 @@
+branchName: "#${issue.number} ${issue.title^}"
+gitSafeReplacementChar: "-"
+autoCloseIssue: true
+copyIssueLabelsToPR: true
+copyIssueAssigneeToPR: true
+branches:
+  - label: Bug
+    prefix: bugfix/
+  - label: Simple Fix
+    prefix: bugfix/
+  - label: HOTFIX
+    prefix: hotfix/
+  - label: CI
+    prefix: env/
+  - label: Setting
+    prefix: env/
+  - label: Design
+    prefix: feat/
+  - label: Feature
+    prefix: feat/
+  - label: Refactor
+    prefix: feat/
+  - label: Test
+    prefix: feat/
+  - label: Document
+    prefix: docs/

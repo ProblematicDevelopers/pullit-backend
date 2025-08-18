@@ -1,0 +1,30 @@
+package com.pullit.item.embedded;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.*;
+
+@Embeddable
+@Getter
+@NoArgsConstructor(access= AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class CodeNamePair {
+
+    @Column
+    private Long code;
+
+    @Column(length=200)
+    private String name;
+
+    public boolean isValid(){
+        return code != null && code > 0;
+    }
+
+    public String getDisplayName(){
+        if(name!=null && !name.trim().isEmpty()){
+            return name;
+        }
+        return code != null ? code.toString() : "";
+    }
+}
