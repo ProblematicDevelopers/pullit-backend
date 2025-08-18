@@ -28,6 +28,8 @@ public class UnifiedExamResponse {
             String gradeName,
             String termCode,
             String termName,
+            String areaCode,
+            String areaName,
             Integer itemCount,
             ExamVisibility visibility,
             String pdfUrl,
@@ -46,6 +48,8 @@ public class UnifiedExamResponse {
         this.gradeName = gradeName;
         this.termCode = termCode;
         this.termName = termName;
+        this.areaCode = areaCode;
+        this.areaName = areaName;
         this.itemCount = itemCount;
         this.visibility = visibility;
         this.pdfUrl = pdfUrl;
@@ -177,6 +181,11 @@ public class UnifiedExamResponse {
      */
     private LocalDateTime examDate;
 
+    /**
+     * area(과목)정보 추가
+     */
+    private String areaCode;
+    private String areaName;
     // ===== 헬퍼 메서드 =====
 
     /**
