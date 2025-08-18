@@ -2,6 +2,7 @@ package com.pullit.item.elastic.controller;
 import com.pullit.common.dto.response.ApiResponse;
 import com.pullit.item.elastic.document.ItemImageDocument;
 import com.pullit.item.elastic.service.ItemImageService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,6 +24,7 @@ public class ItemController {
         this.itemImageService = itemImageService;
     }
 
+    @Operation(summary = "유사 문항 조회", description = "topicChapterId, difficultyCode, excludeItemIds(제외할 itemId 리스트), size(조회할 문항수 default:20)")
     @PostMapping("/similar")
     public ResponseEntity<ApiResponse<List<ItemImageDocument>>> getSimilarItems(
             @RequestBody SimilarItemsRequest request
