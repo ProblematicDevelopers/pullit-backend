@@ -40,11 +40,11 @@ public class ItemImageService {
 
         // 기본 필터: 난이도 동일, 제외 문항 제외
         BoolQuery.Builder baseBoolQuery = new BoolQuery.Builder()
-                .must(m -> m.term(t -> t.field("difficultyCode").value(difficultyCode)));
+                .must(m -> m.term(t -> t.field("difficulty_code").value(difficultyCode)));
 
         if (excludeItemIds != null && !excludeItemIds.isEmpty()) {
             baseBoolQuery.mustNot(mn -> mn.terms(t -> t
-                    .field("itemId")
+                    .field("item_id")
                     .terms(tt -> tt.value(
                             excludeItemIds.stream().map(FieldValue::of).collect(Collectors.toList())
                     ))
@@ -57,17 +57,18 @@ public class ItemImageService {
                 .query(q -> q.functionScore(fs -> fs
                         .query(qb -> qb.bool(baseBoolQuery.build()))
                         .functions(
-                                buildWeightedFilter("subjectId", subjectId, 1.0),
-                                buildWeightedFilter("largeChapterId", largeChapterId, 2.0),
-                                buildWeightedFilter("mediumChapterId", mediumChapterId, 3.0),
-                                buildWeightedFilter("smallChapterId", smallChapterId, 4.0),
-                                buildWeightedFilter("topicChapterId", topicChapterId, 5.0)
+                                buildWeightedFilter("subject_id", subjectId, 1.0),
+                                buildWeightedFilter("large_chapter_id", largeChapterId, 2.0),
+                                buildWeightedFilter("medium_chapter_id", mediumChapterId, 3.0),
+                                buildWeightedFilter("small_chapter_id", smallChapterId, 4.0),
+                                buildWeightedFilter("topic_chapter_id", topicChapterId, 5.0)
                         )
                         .scoreMode(FunctionScoreMode.Sum)
                         .boostMode(FunctionBoostMode.Replace)
                 ))
                 .size(size)
         );
+
 
         SearchResponse<ItemImageDocument> response = elasticsearchClient.search(searchRequest, ItemImageDocument.class);
 

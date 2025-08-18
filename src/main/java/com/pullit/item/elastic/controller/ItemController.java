@@ -1,4 +1,5 @@
 package com.pullit.item.elastic.controller;
+import com.pullit.common.dto.response.ApiResponse;
 import com.pullit.item.elastic.document.ItemImageDocument;
 import com.pullit.item.elastic.service.ItemImageService;
 import lombok.AllArgsConstructor;
@@ -23,7 +24,7 @@ public class ItemController {
     }
 
     @PostMapping("/similar")
-    public ResponseEntity<List<ItemImageDocument>> getSimilarItems(
+    public ResponseEntity<ApiResponse<List<ItemImageDocument>>> getSimilarItems(
             @RequestBody SimilarItemsRequest request
     ) throws IOException {
         List<ItemImageDocument> similarItems = itemImageService.findSimilarItems(
@@ -32,7 +33,7 @@ public class ItemController {
                 request.getExcludeItemIds(),
                 request.getSize()
         );
-        return ResponseEntity.ok(similarItems);
+        return ResponseEntity.ok(ApiResponse.success(similarItems, "유사 문항 조회 성공"));
     }
 
     @Getter

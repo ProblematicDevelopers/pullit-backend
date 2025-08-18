@@ -32,15 +32,6 @@ public class ElasticsearchConfig {
     @Value("${elasticsearch.password:}")
     private String password;
 
-    @Value("${elasticsearch.connectTimeout:5000}")
-    private int connectTimeout;
-
-    @Value("${elasticsearch.socketTimeout:60000}")
-    private int socketTimeout;
-
-    @Value("${elasticsearch.maxConnTotal:100}")
-    private int maxConnTotal;
-
     @Bean
     public ElasticsearchClient elasticsearchClient() {
         // 1. URI → HttpHost 배열 변환
@@ -57,27 +48,16 @@ public class ElasticsearchConfig {
 
         // 3. RestClient 생성
         RestClient restClient = RestClient.builder(hosts)
-                .setRequestConfigCallback(requestConfigBuilder ->
-                        requestConfigBuilder
-                                .setConnectTimeout(connectTimeout)
-                                .setSocketTimeout(socketTimeout)
-                )
                 .setHttpClientConfigCallback(httpClientBuilder -> {
                     if (!username.isEmpty() && !password.isEmpty()) {
                         httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
                     }
-                    return httpClientBuilder.setMaxConnTotal(maxConnTotal);
+                    return httpClientBuilder;
                 })
                 .build();
 
-        // 4. Jackson ObjectMapper 커스터마이징
-        ObjectMapper om = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
-
-        // 5. ElasticsearchClient 생성
-        RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper(om));
+        // 4. ElasticsearchClient 생성
+        RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
         return new ElasticsearchClient(transport);
     }
 }
