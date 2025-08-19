@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +25,7 @@ import java.util.Map;
 @Tag(name="Item Search", description = "문항 검색 API")
 public class ItemSearchController {
     private final ItemSearchService itemSearchService;
+    private final com.pullit.item.elastic.controller.ItemController itemController;
 
     @Operation(summary = "문항 검색", description = "교과서별 문항을 검색합니다")
     @PostMapping("/search")
@@ -105,6 +107,15 @@ public class ItemSearchController {
         List<ItemSearchResponse> items = itemSearchService.getItemsByIds(itemIds);
 
         return ResponseEntity.ok(ApiResponse.success(items, "문항 일괄 조회 성공"));
+    }
+
+    @Operation(summary = "유사 문항 조회", description = "ES를 통한 유사 문항 검색")
+    @PostMapping("/similar")
+    public ResponseEntity<?> getSimilarItems(
+            @RequestBody com.pullit.item.elastic.controller.ItemController.SimilarItemsRequest request
+    ) throws IOException {
+        // ES ItemController의 메서드를 그대로 호출
+        return itemController.getSimilarItems(request);
     }
 
 }

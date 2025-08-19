@@ -16,8 +16,7 @@ import java.util.List;
 @Builder
 public class ItemSearchRequest {
 
-    @NotNull(message = "교과서 ID는 필수입니다.")
-    private Long subjectId;
+    private Long subjectId;  // 선택적 - 교과서 필터링
 
     @Builder.Default
     private List<Long> largeChapterIds = new ArrayList<>();

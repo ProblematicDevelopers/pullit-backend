@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface SubjectRepository extends JpaRepository<Subject, Integer>{
+public interface SubjectRepository extends JpaRepository<Subject, Long>{
     
     @Query("SELECT s FROM Subject s WHERE " +
            "(:gradeCode IS NULL OR s.grade.code = :gradeCode) AND " +
