@@ -2,8 +2,13 @@ package com.pullit.exam.service;
 
 import com.pullit.exam.dto.request.ExamSearchRequest;
 import com.pullit.exam.dto.response.ExamCountBySubjectResponse;
+import com.pullit.exam.dto.response.ExamWithItemsResponse;
 import com.pullit.exam.dto.response.UnifiedExamResponse;
+import com.pullit.exam.entity.Exam;
+import com.pullit.exam.entity.ExamItem;
+import com.pullit.exam.repository.ExamRepository;
 import com.pullit.exam.repository.ExamSearchRepository;
+import com.pullit.item.entity.Subject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -15,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 
@@ -24,6 +31,7 @@ import jakarta.persistence.Query;
 @Transactional(readOnly=true)
 public class ExamSearchServiceImpl implements ExamSearchService {
     private final ExamSearchRepository examSearchRepository;
+    private final ExamRepository examRepository;
     private final EntityManager entityManager;
 
     /**
@@ -351,4 +359,135 @@ public class ExamSearchServiceImpl implements ExamSearchService {
         return filterOptions;
     }
 
+    /**
+     * 특정 시험지의 문항 ID 목록만 조회합니다
+     * 성능 최적화를 위해 ID만 직접 조회
+     * 
+     * @param examId 시험지 ID
+     * @return 문항 ID 목록
+     */
+    @Override
+    @Cacheable(value = "examItemIds", key = "#examId", condition = "#examId != null")
+    public List<Long> getExamItemIds(Long examId) {
+        log.debug("시험지 문항 ID 목록 조회 시작: examId={}", examId);
+        
+        if (examId == null) {
+            log.warn("examId가 null입니다");
+            return new ArrayList<>();
+        }
+        
+        try {
+            // JPQL을 사용하여 직접 itemId만 조회 (성능 최적화)
+            String jpql = "SELECT ei.item.itemId FROM ExamItem ei " +
+                         "WHERE ei.exam.id = :examId " +
+                         "AND ei.item IS NOT NULL " +
+                         "ORDER BY ei.itemNo";
+            
+            List<Long> itemIds = entityManager.createQuery(jpql, Long.class)
+                    .setParameter("examId", examId)
+                    .getResultList();
+            
+            log.debug("시험지 문항 ID 목록 조회 완료: examId={}, count={}", 
+                    examId, itemIds.size());
+            
+            return itemIds != null ? itemIds : new ArrayList<>();
+            
+        } catch (Exception e) {
+            log.error("시험지 문항 ID 조회 중 오류: examId={}", examId, e);
+            throw new RuntimeException("시험지 문항 ID 조회 실패", e);
+        }
+    }
+
+    /**
+     * 특정 시험지의 문항 정보를 조회합니다
+     * 편집 모드에서 기존 시험지의 문항들을 불러올 때 사용
+     * 
+     * @param examId 시험지 ID
+     * @return 시험지와 문항 정보
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public ExamWithItemsResponse getExamWithItems(Long examId) {
+        log.debug("시험지 문항 정보 조회 시작: examId={}", examId);
+        
+        if (examId == null) {
+            log.warn("examId가 null입니다");
+            return null;
+        }
+        
+        try {
+            // 1. Exam 엔티티와 연관 데이터를 한 번에 조회 (N+1 문제 방지)
+            Exam exam = examRepository.findByIdWithFullDetails(examId)
+                    .orElse(null);
+            
+            if (exam == null) {
+                log.warn("시험지를 찾을 수 없음: examId={}", examId);
+                return null;
+            }
+            
+            // 2. ExamItem 목록에서 itemId 추출 (itemNo 순서대로 정렬)
+            List<Long> itemIds = exam.getExamItems().stream()
+                    .sorted((a, b) -> {
+                        Integer aNo = a.getItemNo() != null ? a.getItemNo() : 0;
+                        Integer bNo = b.getItemNo() != null ? b.getItemNo() : 0;
+                        return aNo.compareTo(bNo);
+                    })
+                    .map(examItem -> {
+                        if (examItem.getItem() != null) {
+                            return examItem.getItem().getItemId();
+                        }
+                        return null;
+                    })
+                    .filter(id -> id != null)
+                    .collect(Collectors.toList());
+            
+            // 3. Subject에서 학년/과목 정보 추출
+            String gradeName = "";
+            String gradeCode = "";
+            String areaName = "";
+            String areaCode = "";
+            String subjectName = "";
+            Long subjectId = null;
+            
+            if (exam.getSubject() != null) {
+                Subject subject = exam.getSubject();
+                subjectId = subject.getSubjectId();
+                subjectName = subject.getSubjectName();
+                
+                // Subject 엔티티의 StringCodeNamePair에서 정보 추출
+                if (subject.getGrade() != null) {
+                    gradeName = subject.getGrade().getName();
+                    gradeCode = subject.getGrade().getCode();
+                }
+                
+                if (subject.getArea() != null) {
+                    areaName = subject.getArea().getName();
+                    areaCode = subject.getArea().getCode();
+                }
+            }
+            
+            // 4. Response 객체 생성
+            ExamWithItemsResponse response = ExamWithItemsResponse.builder()
+                    .examId(exam.getId())
+                    .examName(exam.getExamName())
+                    .itemCount(exam.getItemCount() != null ? exam.getItemCount() : itemIds.size())
+                    .itemIds(itemIds)
+                    .gradeCode(gradeCode)
+                    .gradeName(gradeName)
+                    .areaCode(areaCode)
+                    .areaName(areaName)
+                    .subjectId(subjectId)
+                    .subjectName(subjectName)
+                    .build();
+            
+            log.debug("시험지 문항 정보 조회 완료: examId={}, itemCount={}, itemIds={}", 
+                    examId, itemIds.size(), itemIds);
+            
+            return response;
+            
+        } catch (Exception e) {
+            log.error("시험지 문항 정보 조회 중 오류 발생: examId={}", examId, e);
+            throw new RuntimeException("시험지 문항 정보 조회 실패", e);
+        }
+    }
 }

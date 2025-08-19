@@ -3,6 +3,7 @@ package com.pullit.exam.service;
 
 import com.pullit.exam.dto.request.ExamSearchRequest;
 import com.pullit.exam.dto.response.ExamCountBySubjectResponse;
+import com.pullit.exam.dto.response.ExamWithItemsResponse;
 import com.pullit.exam.dto.response.UnifiedExamResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -116,4 +117,8 @@ public interface ExamSearchService {
      * @return 필터 옵션 데이터
      */
     Map<String, Object> getFilterOptions();
+
+    List<Long> getExamItemIds(Long examId);
+
+    ExamWithItemsResponse getExamWithItems(Long examId);
 }

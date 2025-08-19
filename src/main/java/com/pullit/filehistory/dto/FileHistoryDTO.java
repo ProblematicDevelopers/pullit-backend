@@ -15,7 +15,7 @@ import java.sql.Timestamp;
 public class FileHistoryDTO {
     private Long id;
 
-    private Long examId;
+    private Long subjectId;
 
     private String fileHistoryName;
 
@@ -31,7 +31,7 @@ public class FileHistoryDTO {
         }
         return FileHistoryDTO.builder()
                 .id(fileHistory.getId())
-                .examId(fileHistory.getExamId())
+                .subjectId(fileHistory.getSubjectId())
                 .fileHistoryName(fileHistory.getFileHistoryName())
                 .createdBy(fileHistory.getCreatedBy())
                 .createdDate(fileHistory.getCreatedDate())

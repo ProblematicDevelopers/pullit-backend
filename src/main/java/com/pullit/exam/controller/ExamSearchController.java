@@ -1,7 +1,10 @@
 package com.pullit.exam.controller;
 
+import com.pullit.common.dto.response.ApiResponse;
+import com.pullit.common.exception.ErrorCode;
 import com.pullit.exam.dto.request.ExamSearchRequest;
 import com.pullit.exam.dto.response.ExamCountBySubjectResponse;
+import com.pullit.exam.dto.response.ExamWithItemsResponse;
 import com.pullit.exam.dto.response.UnifiedExamResponse;
 import com.pullit.exam.service.ExamSearchService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,9 +27,10 @@ import java.util.Map;
 @Slf4j
 @RequestMapping("/api/exams")
 @RequiredArgsConstructor
-@Tag(name="Exam Search", description = "시험 검색 API")
+@Tag(name = "Exam Search", description = "시험 검색 API")
 public class ExamSearchController {
     private final ExamSearchService examSearchService;
+
     /**
      * 통합 검색
      * - Exam과 UserExam을 모두 검색
@@ -39,7 +43,7 @@ public class ExamSearchController {
             @PageableDefault(size = 20, sort = "createdDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         log.info("통합 검색 요청: keyword={}, subjectId={}, visibility={}, gradeCode={}, areaCode={}, termCode={}",
-                request.getKeyword(), request.getSubjectId(), request.getVisibility(), 
+                request.getKeyword(), request.getSubjectId(), request.getVisibility(),
                 request.getGradeCode(), request.getAreaCode(), request.getTermCode());
         log.debug("검색 요청 상세: {}", request);
 
@@ -205,32 +209,32 @@ public class ExamSearchController {
     public ResponseEntity<Map<String, Object>> getExamCount(
             @ModelAttribute ExamSearchRequest request
     ) {
-        log.info("시험지 개수 조회 요청: areaCode={}, gradeCode={}", 
+        log.info("시험지 개수 조회 요청: areaCode={}, gradeCode={}",
                 request.getAreaCode(), request.getGradeCode());
-        
+
         Map<String, Object> countData = new HashMap<>();
-        
+
         try {
             // 전체 검색을 수행하여 실제 개수 가져오기
             Page<UnifiedExamResponse> result = examSearchService.searchExams(
-                request, 
-                Pageable.ofSize(1) // 개수만 필요하므로 1개만 조회
+                    request,
+                    Pageable.ofSize(1) // 개수만 필요하므로 1개만 조회
             );
-            
+
             long totalCount = result.getTotalElements();
-            
+
             // 응답 데이터 구성
             countData.put("totalCount", totalCount);
-            
+
             // TestWizard와 UserCreated 개수 (향후 구분 가능하면 추가)
             countData.put("testWizardCount", totalCount); // 현재는 전체 개수로 설정
             countData.put("userCreatedCount", 0);
-            
+
             // 공개 범위별 개수 (추가 쿼리 필요시 구현)
             countData.put("publicCount", totalCount);
             countData.put("schoolCount", 0);
             countData.put("privateCount", 0);
-            
+
             log.info("시험지 개수 조회 성공: totalCount={}", totalCount);
         } catch (Exception e) {
             log.error("시험지 개수 조회 중 오류 발생", e);
@@ -242,10 +246,10 @@ public class ExamSearchController {
             countData.put("schoolCount", 0);
             countData.put("privateCount", 0);
         }
-        
+
         return ResponseEntity.ok(countData);
     }
-    
+
     /**
      * 필터 옵션 조회
      * - 학년, 과목, 학기 등의 필터 옵션을 조회합니다
@@ -254,10 +258,97 @@ public class ExamSearchController {
     @Operation(summary = "필터 옵션 조회", description = "검색 필터에 사용할 옵션들을 조회합니다")
     public ResponseEntity<Map<String, Object>> getFilterOptions() {
         log.info("필터 옵션 조회 요청");
-        
+
         Map<String, Object> filterOptions = examSearchService.getFilterOptions();
-        
+
         return ResponseEntity.ok(filterOptions);
     }
 
-}
+    @GetMapping("/{examId}/items")
+    @Operation(summary = "시험지의 문항 정보 조회", description = "시험지에 포함된 문항 ID목록과 정보 조회")
+    public ResponseEntity<ApiResponse<ExamWithItemsResponse>> getExamWithItems(
+            @PathVariable Long  examId
+    ){
+        log.info("시험지 문항 조회 요청: examId={}", examId);
+        try {
+            // 입력값 검증
+            if (examId == null || examId <= 0) {
+                log.warn("잘못된 examId: {}", examId);
+                return ResponseEntity.ok(
+                        ApiResponse.error(ErrorCode.INVALID_INPUT)
+                );
+            }
+
+            // 서비스 호출
+            ExamWithItemsResponse response = examSearchService.getExamWithItems(examId);
+
+            // 결과 확인
+            if (response == null) {
+                log.warn("시험지를 찾을 수 없음: examId={}", examId);
+                return ResponseEntity.ok(
+                        ApiResponse.error(ErrorCode.ENTITY_NOT_FOUND)
+                );
+            }
+
+            log.info("시험지 문항 조회 성공: examId={}, itemCount={}",
+                    examId, response.getItemCount());
+
+            // 성공 응답
+            return ResponseEntity.ok(
+                    ApiResponse.success(response, "시험지 문항 정보를 성공적으로 조회했습니다.")
+            );
+
+        } catch (Exception e) {
+            log.error("시험지 문항 조회 중 오류 발생: examId={}", examId, e);
+            return ResponseEntity.ok(
+                    ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR)
+            );
+        }
+
+    }
+    @GetMapping("/{examId}/item-ids")
+    @Operation(summary = "시험지의 문항 ID 목록 조회",
+            description = "특정 시험지에 포함된 문항 ID 목록만 조회합니다")
+    public ResponseEntity<ApiResponse<List<Long>>> getExamItemIds(
+            @PathVariable Long examId
+    ) {
+        log.info("시험지 문항 ID 목록 조회 요청: examId={}", examId);
+
+        try {
+            // 입력값 검증
+            if (examId == null || examId <= 0) {
+                log.warn("잘못된 examId: {}", examId);
+                return ResponseEntity.ok(
+                        ApiResponse.error(ErrorCode.INVALID_INPUT)
+                );
+            }
+
+            // 서비스 호출
+            List<Long> itemIds = examSearchService.getExamItemIds(examId);
+
+            // 결과 확인
+            if (itemIds == null || itemIds.isEmpty()) {
+                log.info("시험지에 문항이 없음: examId={}", examId);
+                // 빈 목록도 정상 응답으로 처리
+                return ResponseEntity.ok(
+                        ApiResponse.success(itemIds, "시험지에 문항이 없습니다.")
+                );
+            }
+
+            log.info("시험지 문항 ID 조회 성공: examId={}, count={}",
+                    examId, itemIds.size());
+
+            // 성공 응답
+            String message = String.format("%d개의 문항 ID를 조회했습니다.", itemIds.size());
+            return ResponseEntity.ok(
+                    ApiResponse.success(itemIds, message)
+            );
+
+        } catch (Exception e) {
+            log.error("시험지 문항 ID 조회 중 오류 발생: examId={}", examId, e);
+            return ResponseEntity.ok(
+                    ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR)
+            );
+        }
+    }
+    }
