@@ -18,8 +18,8 @@ public class FileHistory {
     @Column(name = "file_history_id", nullable = false)
     private Long id;
 
-    @Column(name = "exam_id", nullable = false)
-    private Long examId;
+    @Column(name = "subject_id", nullable = false)
+    private Long subjectId;
 
     @Column(name = "file_history_name")
     private String fileHistoryName;
