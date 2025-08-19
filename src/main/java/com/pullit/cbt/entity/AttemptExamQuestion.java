@@ -1,5 +1,6 @@
 package com.pullit.cbt.entity;
 
+import com.pullit.cbt.dto.response.AttemptExamQuestionResponse;
 import com.pullit.common.entity.BaseTimeEntity;
 import com.pullit.exam.entity.UserExamItem;
 import jakarta.persistence.*;
@@ -85,4 +86,22 @@ public class AttemptExamQuestion extends BaseTimeEntity {
         int seconds = duration % 60;
         return String.format("%02d:%02d", minutes, seconds);
     }
+
+    // single converter
+    public AttemptExamQuestionResponse convertToResponse(AttemptExamQuestion attemptExamQuestion) {
+        if (attemptExamQuestion == null) {
+            return null;
+        }
+
+        return AttemptExamQuestionResponse.builder()
+                .id(attemptExamQuestion.getId())
+                .questionId(attemptExamQuestion.getExamItem().getId())
+                .userAnswer(attemptExamQuestion.getUserAnswer())
+                .isCorrect(attemptExamQuestion.getIsCorrect())
+                .duration(attemptExamQuestion.getDuration())
+                .points(attemptExamQuestion.getPoints())
+                .answeredAt(attemptExamQuestion.getAnsweredAt())
+                .build();
+    }
+
 }

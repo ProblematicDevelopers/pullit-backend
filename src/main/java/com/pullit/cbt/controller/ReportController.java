@@ -1,6 +1,7 @@
 package com.pullit.cbt.controller;
 
 import com.pullit.auth.authentication.CustomUserDetails;
+import com.pullit.cbt.dto.response.AttemptExamResponse;
 import com.pullit.cbt.entity.AttemptExam;
 import com.pullit.cbt.service.ReportServiceImpl;
 import com.pullit.common.annotation.AuthUser;
@@ -25,11 +26,11 @@ public class ReportController {
 
     @GetMapping("/attempt/{areaCode}")
     @Operation(summary = "exam_attempt 리스트 조회", description = "areaCode 조건 기반 exam_attempt 리스트 조회")
-    public ResponseEntity<ApiResponse<List<AttemptExam>>> getReport(
+    public ResponseEntity<ApiResponse<List<AttemptExamResponse>>> getReport(
                 @PathVariable AreaCode areaCode,
                 @AuthUser CustomUserDetails currentUser
             ) {
-        List<AttemptExam> attemptExamList
+        List<AttemptExamResponse> attemptExamList
                 = reportService.findAttemptExamBySubjectId(currentUser.getUserId(), areaCode);
 
         return ResponseEntity.ok(

@@ -14,8 +14,10 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
     @Query("""
         SELECT ae
         FROM AttemptExam ae
-        JOIN ae.exam e
-        JOIN ae.user u
+        JOIN FETCH ae.exam e
+        JOIN FETCH ae.user u
+        LEFT JOIN FETCH ae.attemptQuestions q
+        LEFT JOIN FETCH q.examItem i
         WHERE e.areaCode = :areaCode
           AND u.id = :userId
     """)
