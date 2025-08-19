@@ -22,7 +22,12 @@ public class SubjectController {
 
     @GetMapping
     @Operation(summary = "교과서 리스트 전체 조회", description = "교과서 전체 리스트")
-    public ResponseEntity<ApiResponse<List<SubjectResponse>>> findAll() {
+    public ResponseEntity<ApiResponse<List<SubjectResponse>>> findAll(
+            @RequestParam(required = false) Boolean includeTextbooks,
+            @RequestParam(required = false) List<String> grades
+    ) {
+        // includeTextbooks와 grades 파라미터는 현재 무시하고 전체 목록 반환
+        // TODO: 필요시 필터링 로직 추가
         List<SubjectResponse> res = subjectService.findAllSubjectsOnly();
         return ResponseEntity.ok(ApiResponse.success(res));
     }

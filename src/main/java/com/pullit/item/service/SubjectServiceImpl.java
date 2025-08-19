@@ -28,4 +28,11 @@ public class SubjectServiceImpl implements SubjectService {
     public List<SubjectResponse> findByGradeCodeAndAreaCode(String gradeCode, String areaCode) {
         return subjectRepository.findByGradeCodeAndAreaCode(gradeCode, areaCode).stream().map(SubjectResponse::from).toList();
     }
+
+    @Override
+    public SubjectResponse findById(Long id) {
+        Subject subject = subjectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("과목을 찾을 수 없습니다. id=" + id));
+        return SubjectResponse.from(subject);
+    }
 }
