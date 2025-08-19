@@ -75,6 +75,17 @@ public interface ExamRepository extends JpaRepository<Exam, Long>, QuerydslPredi
             "LEFT JOIN FETCH e.examItems ei " +
             "WHERE e.id = :examId")
     Optional<Exam> findByIdWithItems(@Param("examId") Long examId);
+    
+    /**
+     * 시험지 전체 정보 조회 (모든 연관 엔티티 포함)
+     * 편집 모드에서 필요한 모든 정보를 한 번에 로드
+     */
+    @Query("SELECT DISTINCT e FROM Exam e " +
+           "LEFT JOIN FETCH e.subject s " +
+           "LEFT JOIN FETCH e.examItems ei " +
+           "LEFT JOIN FETCH ei.item " +
+           "WHERE e.id = :examId")
+    Optional<Exam> findByIdWithFullDetails(@Param("examId") Long examId);
 
     /**
      * 학교별 공개 시험 조회 (Teacher 엔티티 사용)
