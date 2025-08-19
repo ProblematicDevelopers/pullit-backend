@@ -8,6 +8,7 @@ import com.pullit.exam.repository.UserExamRepository;
 import com.pullit.item.dao.ItemMetadataRepository;
 import com.pullit.item.dao.SubjectRepository;
 import com.pullit.item.dto.response.SubjectResponse;
+import com.pullit.cbt.dto.response.CbtCandidateItemResponse;
 import com.pullit.item.entity.ItemMetadata;
 import com.pullit.item.entity.Subject;
 import lombok.RequiredArgsConstructor;
@@ -98,10 +99,9 @@ public class CbtServiceImpl implements CbtService {
             }
         }
 
-        // ItemMetadataRepository에서 조건에 맞는 문제 조회
-        List<ItemMetadata> candidates = itemMetadataRepository
-                .findBySubject_SubjectIdAndChapterHierarchy_LargeChapter_CodeInAndChapterHierarchy_MediumChapter_CodeIn(
-                        request.getSubjectId(), largeChapterCodes, mediumChapterCodes);
+        // 후보 아이템을 경량 DTO로 조회
+        List<CbtCandidateItemResponse> candidates = itemMetadataRepository
+                .findCandidateItems(request.getSubjectId(), largeChapterCodes, mediumChapterCodes);
 
         if (candidates.isEmpty()) {
             throw new IllegalArgumentException("조건에 맞는 문제가 없습니다.");
@@ -109,34 +109,32 @@ public class CbtServiceImpl implements CbtService {
 
         // 5. 난이도별로 분포 계산
         // 난이도 코드 추출 (예: "EASY", "MEDIUM", "HARD" 등)
-        Map<Long, List<ItemMetadata>> difficultyMap = new java.util.HashMap<>();
-        for (ItemMetadata item : candidates) {
-            Long diff = (item.getDifficulty() != null && item.getDifficulty().getCode() != null)
-                    ? item.getDifficulty().getCode()
-                    : -1L;
+        Map<Long, List<CbtCandidateItemResponse>> difficultyMap = new java.util.HashMap<>();
+        for (CbtCandidateItemResponse item : candidates) {
+            Long diff = item.getDifficultyCode() != null ? item.getDifficultyCode() : -1L;
             difficultyMap.computeIfAbsent(diff, k -> new java.util.ArrayList<>()).add(item);
         }
 
         // 난이도별로 균등 분포 (남은 문제는 랜덤하게 채움)
-        List<ItemMetadata> selectedItems = new java.util.ArrayList<>();
+        List<CbtCandidateItemResponse> selectedItems = new java.util.ArrayList<>();
         int diffTypes = difficultyMap.size();
         int baseCount = totalCount / diffTypes;
         int remain = totalCount % diffTypes;
 
         java.util.Random random = new java.util.Random();
-        for (List<ItemMetadata> diffList : difficultyMap.values()) {
+        for (List<CbtCandidateItemResponse> diffList : difficultyMap.values()) {
             java.util.Collections.shuffle(diffList, random);
         }
 
         // 각 난이도에서 baseCount만큼 뽑기
-        for (List<ItemMetadata> diffList : difficultyMap.values()) {
+        for (List<CbtCandidateItemResponse> diffList : difficultyMap.values()) {
             int pick = Math.min(baseCount, diffList.size());
             selectedItems.addAll(diffList.subList(0, pick));
         }
 
         // 남은 개수는 난이도 상관없이 랜덤하게 채움
-        List<ItemMetadata> remainPool = new java.util.ArrayList<>();
-        for (List<ItemMetadata> diffList : difficultyMap.values()) {
+        List<CbtCandidateItemResponse> remainPool = new java.util.ArrayList<>();
+        for (List<CbtCandidateItemResponse> diffList : difficultyMap.values()) {
             if (diffList.size() > baseCount) {
                 remainPool.addAll(diffList.subList(baseCount, diffList.size()));
             }
@@ -148,7 +146,7 @@ public class CbtServiceImpl implements CbtService {
 
         // 만약 문제 수가 부족하면 candidates에서 랜덤하게 채움
         while (selectedItems.size() < totalCount && selectedItems.size() < candidates.size()) {
-            ItemMetadata extra = candidates.get(random.nextInt(candidates.size()));
+            CbtCandidateItemResponse extra = candidates.get(random.nextInt(candidates.size()));
             if (!selectedItems.contains(extra)) {
                 selectedItems.add(extra);
             }
@@ -156,13 +154,13 @@ public class CbtServiceImpl implements CbtService {
 
         // 6. UserExamItem 생성 및 시험에 추가
         int order = userExam.getExamItems() != null ? userExam.getExamItems().size() + 1 : 1;
-        for (ItemMetadata item : selectedItems) {
+        for (CbtCandidateItemResponse item : selectedItems) {
             UserExamItem examItem = UserExamItem.builder()
                     .userExam(userExam)
                     .itemId(item.getItemId())
-                    .subjectId(item.getSubject().getSubjectId())
+                    .subjectId(item.getSubjectId())
                     .itemOrder(order++)
-                    .points(null) // 배점은 필요시 설정
+                    .points(0) // 배점은 필요시 설정
                     .build();
             userExam.addExamItem(examItem);
         }

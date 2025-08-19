@@ -5,7 +5,6 @@ import com.pullit.cbt.dto.request.CbtExamCreateRequest;
 import com.pullit.cbt.service.CbtService;
 import com.pullit.common.annotation.AuthUser;
 import com.pullit.common.dto.response.ApiResponse;
-import com.pullit.item.service.SubjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class CbtController {
     private final CbtService cbtService;
-    private final SubjectService subjectService;
 
     @PostMapping("/create")
     @Operation(summary = "cbt 시험지 생성 및 메타 데이터 연결", description = "cbt 시험지 생성 및 메타 데이터 연결")
@@ -25,6 +23,7 @@ public class CbtController {
             @RequestBody CbtExamCreateRequest request) {
         Long userId = currentUser.getUserId();
         Long examId = cbtService.createExam(userId, request);
+        cbtService.addExamItem(examId, request);
 
         return ResponseEntity.ok(ApiResponse.success("CBT 시험 생성 요청 성공"));
     }

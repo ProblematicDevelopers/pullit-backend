@@ -1,5 +1,6 @@
 package com.pullit.item.dao;
 
+import com.pullit.cbt.dto.response.CbtCandidateItemResponse;
 import com.pullit.item.entity.ItemMetadata;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -29,6 +30,15 @@ public interface ItemMetadataRepository extends JpaRepository<ItemMetadata, Long
     // 지문별 문항 조회
     List<ItemMetadata> findByPassageId(Long passageId);
 
-    List<ItemMetadata> findBySubject_SubjectIdAndChapterHierarchy_LargeChapter_CodeInAndChapterHierarchy_MediumChapter_CodeIn(
-            Long subjectId, List<Long> largeChapterCodes, List<Long> mediumChapterCodes);
+    // 후보 아이템을 경량 DTO로 조회 (JPQL constructor expression)
+    @Query("select new com.pullit.cbt.dto.response.CbtCandidateItemResponse(i.itemId, i.subject.subjectId, i.difficulty.code) "
+            +
+            "from ItemMetadata i " +
+            "where i.subject.subjectId = :subjectId " +
+            "and i.chapterHierarchy.largeChapter.code in :largeCodes " +
+            "and i.chapterHierarchy.mediumChapter.code in :mediumCodes")
+    List<CbtCandidateItemResponse> findCandidateItems(
+            @Param("subjectId") Long subjectId,
+            @Param("largeCodes") List<Long> largeCodes,
+            @Param("mediumCodes") List<Long> mediumCodes);
 }
