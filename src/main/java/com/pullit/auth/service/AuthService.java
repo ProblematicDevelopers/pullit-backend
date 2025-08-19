@@ -151,4 +151,61 @@ public class AuthService {
                 .user(UserResponse.from(user))
                 .build();
     }
+
+    /**
+     * 소셜 로그인 사용자 정보로 로그인 처리
+     * @param provider 소셜 로그인 제공자 (google, kakao, naver)
+     * @param providerId 소셜 로그인 ID
+     * @param email 이메일
+     * @param name 이름
+     * @return LoginResponse
+     */
+    @Transactional
+    public LoginResponse socialLogin(String provider, String providerId, String email, String name) {
+        log.info("Social login attempt - Provider: {}, ID: {}, Email: {}", provider, providerId, email);
+
+        // 기존 사용자 확인 (이메일로)
+        User user = userService.findByEmail(email)
+                .orElseGet(() -> {
+                    log.info("Creating new user for social login - Provider: {}, Email: {}", provider, email);
+                    // 새 사용자 생성
+                    String username = generateSocialUsername(provider, providerId);
+                    String password = generateRandomPassword();
+                    
+                    UserCreateRequest userRequest = UserCreateRequest.builder()
+                            .username(username)
+                            .email(email)
+                            .fullName(name)
+                            .password(password)
+                            .build();
+                    
+                    UserResponse userResponse = userService.createUser(userRequest);
+                    return userService.getUserById(userResponse.getId());
+                });
+
+        // 마지막 로그인 시간 업데이트
+        userService.updateLastLogin(user.getId());
+
+        // JWT 토큰 생성
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        log.info("Social login successful for user: {}", user.getUsername());
+
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(86400L)
+                .user(UserResponse.from(user))
+                .build();
+    }
+
+    private String generateSocialUsername(String provider, String providerId) {
+        return provider + "_" + providerId;
+    }
+
+    private String generateRandomPassword() {
+        return "SOCIAL_" + System.currentTimeMillis();
+    }
 }

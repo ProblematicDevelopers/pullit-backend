@@ -41,8 +41,23 @@ public class User extends BaseTimeEntity {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "provider", length = 20)
+    private String provider; // "google", "kakao", "naver", null(일반 로그인)
+
     public void updateLastLogin() {
         this.lastLoginAt = LocalDateTime.now();
+    }
+
+    public boolean isSocialLogin() {
+        return provider != null && !provider.isEmpty();
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
     }
 
     public boolean isAdmin() {
