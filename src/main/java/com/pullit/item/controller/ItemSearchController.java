@@ -109,13 +109,13 @@ public class ItemSearchController {
         return ResponseEntity.ok(ApiResponse.success(items, "문항 일괄 조회 성공"));
     }
 
-    @Operation(summary = "유사 문항 조회", description = "ES를 통한 유사 문항 검색")
-    @PostMapping("/similar")
-    public ResponseEntity<?> getSimilarItems(
-            @RequestBody com.pullit.item.elastic.controller.ItemController.SimilarItemsRequest request
-    ) throws IOException {
-        // ES ItemController의 메서드를 그대로 호출
-        return itemController.getSimilarItems(request);
-    }
+//    @Operation(summary = "유사 문항 조회", description = "ES를 통한 유사 문항 검색")
+//    @PostMapping("/similar")
+//    public ResponseEntity<?> getSimilarItems(
+//            @RequestBody com.pullit.item.elastic.controller.ItemController.SimilarItemsRequest request
+//    ) throws IOException {
+//        // ES ItemController의 메서드를 그대로 호출
+//        return itemController.getSimilarItems(request);
+//    }
 
 }

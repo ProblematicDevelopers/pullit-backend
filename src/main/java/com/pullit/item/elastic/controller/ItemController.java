@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/es/items")
+@RequestMapping("/api/items")
 public class ItemController {
 
     private final ItemImageService itemImageService;
