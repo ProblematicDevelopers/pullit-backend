@@ -1,7 +1,9 @@
 package com.pullit.cbt.entity;
 
+import com.pullit.cbt.dto.response.AttemptExamResponse;
 import com.pullit.common.entity.BaseTimeEntity;
 import com.pullit.exam.entity.UserExam;
+import com.pullit.user.dto.response.UserResponse;
 import com.pullit.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -9,6 +11,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "exam_attempt")
@@ -100,4 +103,24 @@ public class AttemptExam extends BaseTimeEntity {
     public enum AttemptStatus {
         IN_PROGRESS, DONE
     }
+
+    // single converter
+    public static AttemptExamResponse convertToResponseExclude(AttemptExam attemptExam) {
+        return AttemptExamResponse.builder()
+                .id(attemptExam.getId())
+                .user(UserResponse.builder()
+                        .id(attemptExam.getUser().getId())
+                        .username(attemptExam.getUser().getUsername())
+                        .email(attemptExam.getUser().getEmail())
+                        .fullName(attemptExam.getUser().getFullName())
+                        .role(attemptExam.getUser().getRole())
+                        .build())
+                .examId(attemptExam.getExam().getId())
+                .examName(attemptExam.getExam().getExamName())
+                .startedAt(attemptExam.getStartedAt())
+                .completedAt(attemptExam.getCompletedAt())
+                .status(attemptExam.getStatus())
+                .build();
+    }
+
 }
