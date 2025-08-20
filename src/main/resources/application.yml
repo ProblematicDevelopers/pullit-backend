@@ -5,6 +5,14 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
     
+  # Multipart 파일 업로드 설정
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
+      file-size-threshold: 2KB
+    
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
@@ -97,6 +105,12 @@ springdoc:
     enabled: true
     operations-sorter: method
     tags-sorter: alpha
+    # Multipart 파일 업로드 지원 설정
+    default-consumes-media-type: application/json
+    default-produces-media-type: application/json
+  # 파일 업로드 크기 제한 설정 (Swagger UI에서도 적용)
+  paths-to-match:
+    - /**
 
 # Security 설정
 security:
@@ -140,3 +154,18 @@ jwt:
   access-token-expiration: 86400  # 24시간 (초)
   refresh-token-expiration: 604800 # 7일 (초)
   private-key-location: classpath:keys/private-key.pem
+
+aws:
+  s3:
+    access-key: ${AWS_ACCESS_KEY_ID}
+    secret-key: ${AWS_SECRET_ACCESS_KEY}
+    bucket-name: pullit-frontend-20250805
+    region: ap-northeast-2
+    default-presigned-url-expiry: 60  # 분 단위
+    max-file-size: 100  # MB 단위
+    directories:
+      pdf: pdfs/
+      image: images/
+      excel: excels/
+      temp: temp/
+      profile: profiles/
