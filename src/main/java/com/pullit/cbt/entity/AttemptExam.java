@@ -123,4 +123,26 @@ public class AttemptExam extends BaseTimeEntity {
                 .build();
     }
 
+    // 상세 정보 포함 converter
+    public static AttemptExamResponse convertToResponseWithQuestions(AttemptExam attemptExam) {
+        return AttemptExamResponse.builder()
+                .id(attemptExam.getId())
+                .user(UserResponse.builder()
+                        .id(attemptExam.getUser().getId())
+                        .username(attemptExam.getUser().getUsername())
+                        .email(attemptExam.getUser().getEmail())
+                        .fullName(attemptExam.getUser().getFullName())
+                        .role(attemptExam.getUser().getRole())
+                        .build())
+                .examId(attemptExam.getExam().getId())
+                .examName(attemptExam.getExam().getExamName())
+                .startedAt(attemptExam.getStartedAt())
+                .completedAt(attemptExam.getCompletedAt())
+                .status(attemptExam.getStatus())
+                .attemptQuestions(attemptExam.getAttemptQuestions().stream()
+                        .map(q -> q.convertToResponse(q))
+                        .collect(Collectors.toList()))
+                .build();
+    }
+
 }
