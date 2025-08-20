@@ -2,6 +2,9 @@ package com.pullit.cbt.controller;
 
 import com.pullit.auth.authentication.CustomUserDetails;
 import com.pullit.cbt.dto.response.AttemptExamResponse;
+import com.pullit.cbt.dto.response.DetailDifficultyResponse;
+import com.pullit.cbt.dto.response.DetailErrataResponse;
+import com.pullit.cbt.dto.response.DetailEvaluationResponse;
 import com.pullit.cbt.entity.AttemptExam;
 import com.pullit.cbt.service.ReportService;
 import com.pullit.common.annotation.AuthUser;
@@ -26,17 +29,63 @@ public class ReportController {
 
     private final ReportService reportService;
 
+    // 과목 코드 기반 시험 응시 리스트 조회
     @GetMapping("/attempt/{areaCode}")
     @Operation(summary = "exam_attempt 리스트 조회", description = "areaCode 조건 기반 exam_attempt 리스트 조회")
     public ResponseEntity<ApiResponse<List<AttemptExamResponse>>> getReport(
                 @PathVariable AreaCode areaCode,
                 @AuthUser CustomUserDetails currentUser
             ) {
-        List<AttemptExamResponse> attemptExamList
-                = reportService.findAttemptExamBySubjectId(currentUser.getUserId(), areaCode);
-
         return ResponseEntity.ok(
-            ApiResponse.success(attemptExamList, "Exam Attempt List 조회 성공")
+            ApiResponse.success(
+                reportService.findAttemptExamBySubjectId(currentUser.getUserId(), areaCode),
+                "Exam Attempt List 조회 성공"
+            )
+        );
+    }
+
+    // 시험 id 기반 상세 정오표 조회
+    @GetMapping("/detailerrata/{examId}")
+    @Operation(summary = "detail errata 조회", description = "시험 id 기반 상세 정오표 조회")
+    public ResponseEntity<ApiResponse<List<DetailErrataResponse>>> getDetailErrata(
+            @PathVariable Long examId,
+            @AuthUser CustomUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        reportService.findDetailErrataByExamId(examId, currentUser.getUserId()),
+                        "Detail Errata 조회 성공"
+                )
+        );
+    }
+
+    // 난이도별 성취율 및 평균 정답률 조회
+    @GetMapping("/detaildifficulty/{examId}")
+    @Operation(summary = "detail diffculty 조회", description = "난이도별 성취율 + 평균 정답율 조회")
+    public ResponseEntity<ApiResponse<List<DetailDifficultyResponse>>> getDetailDifficulty(
+            @PathVariable Long examId,
+            @AuthUser CustomUserDetails currentUser
+    ){
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        reportService.findDetailDifficultyByExamId(currentUser.getUserId(), examId),
+                        "Detail Difficulty 조회 성공"
+                )
+        );
+    }
+
+    // 평가영역별 성취율 및 평균 정답률 조회
+    @GetMapping("/detailevaluation/{examId}")
+    @Operation(summary = "detail evaluation 조회", description = "평가영역별 성취율 + 평균 정답률 조회")
+    public ResponseEntity<ApiResponse<List<DetailEvaluationResponse>>> getDetailEvaluation(
+            @PathVariable Long examId,
+            @AuthUser CustomUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        reportService.findDetailEvaluationByExamId(currentUser.getUserId(), examId),
+                        "Detail Evaluation 조회 성공"
+                )
         );
     }
 
