@@ -75,29 +75,115 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
             @Param("userId") Long userId
     );
 
-    // 문항 난이도별 성취율+평균 정답율
+    // 문항 난이도별 성취율+평균 정답율+평균 소요시간
     @Query(value = """
-    SELECT
-        q.difficulty_code AS difficultyCode,
-        COUNT(*) AS itemCount,
-        SUM(q.sum_correct) * 1.0 / SUM(q.attempts) AS totalAvg,
-        SUM(q.sum_correct_user) * 1.0 / SUM(q.attempts_user) AS userAvg
-    FROM (
+        WITH total_points_by_difficulty AS (
+            SELECT
+                im.difficulty_code,
+                SUM(COALESCE(uei.points, 0)) AS total_points
+            FROM user_exam_items uei
+                     JOIN item_metadata im ON uei.item_id = im.item_id
+            WHERE uei.user_exam_id = :examId
+            GROUP BY im.difficulty_code
+        ),
+             user_difficulty_totals AS (
+                 SELECT
+                     im.difficulty_code,
+                     ea.user_id,
+                     SUM(COALESCE(eaq.points, 0)) AS user_total_points
+                 FROM user_exam_items uei
+                          JOIN item_metadata im ON uei.item_id = im.item_id
+                          LEFT JOIN exam_attempt_question eaq ON eaq.question_id = uei.id
+                          LEFT JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
+                 WHERE uei.user_exam_id = :examId
+                   AND ea.exam_id = :examId
+                 GROUP BY im.difficulty_code, ea.user_id
+             ),
+             user_difficulty_correct_counts AS (
+                 SELECT
+                     im.difficulty_code,
+                     ea.user_id,
+                     SUM(COALESCE(eaq.is_correct, 0)) AS user_correct_count
+                 FROM user_exam_items uei
+                          JOIN item_metadata im ON uei.item_id = im.item_id
+                          LEFT JOIN exam_attempt_question eaq ON eaq.question_id = uei.id
+                          LEFT JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
+                 WHERE uei.user_exam_id = :examId
+                   AND ea.exam_id = :examId
+                 GROUP BY im.difficulty_code, ea.user_id
+             ),
+             user_difficulty_duration AS (
+                 SELECT
+                     im.difficulty_code,
+                     ea.user_id,
+                     AVG(COALESCE(eaq.duration, 0)) AS avg_duration
+                 FROM user_exam_items uei
+                          JOIN item_metadata im ON uei.item_id = im.item_id
+                          LEFT JOIN exam_attempt_question eaq ON eaq.question_id = uei.id
+                          LEFT JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
+                 WHERE uei.user_exam_id = :examId
+                   AND ea.exam_id = :examId
+                 GROUP BY im.difficulty_code, ea.user_id
+             ),
+             difficulty_stats AS (
+                 SELECT
+                     im.difficulty_code,
+                     uei.id as item_id,
+                     COALESCE(uei.points, 0) AS item_points,
+                     SUM(COALESCE(eaq.is_correct, 0)) AS sum_correct,
+                     COUNT(CASE WHEN eaq.is_correct IS NOT NULL THEN 1 END) AS attempts,
+                     SUM(CASE
+                             WHEN ea.user_id = :userId AND ea.exam_id = :examId
+                                 THEN COALESCE(eaq.is_correct, 0)
+                             ELSE 0
+                         END) AS sum_correct_user,
+                     SUM(CASE
+                             WHEN ea.user_id = :userId AND ea.exam_id = :examId
+                                 THEN 1
+                             ELSE 0
+                         END) AS attempts_user
+                 FROM user_exam_items uei
+                          JOIN item_metadata im ON uei.item_id = im.item_id
+                          LEFT JOIN exam_attempt_question eaq ON eaq.question_id = uei.id
+                          LEFT JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
+                 WHERE uei.user_exam_id = :examId
+                 GROUP BY uei.id, im.difficulty_code, uei.points
+             )
         SELECT
-            im.difficulty_code,
-            SUM(eaq.is_correct) AS sum_correct,
-            COUNT(eaq.is_correct) AS attempts,
-            SUM(CASE WHEN ea.user_id = :userId AND ea.exam_id = :examId THEN eaq.is_correct ELSE 0 END) AS sum_correct_user,
-            SUM(CASE WHEN ea.user_id = :userId AND ea.exam_id = :examId THEN 1 ELSE 0 END) AS attempts_user
-        FROM user_exam_items uei
-        JOIN item_metadata im ON uei.item_id = im.item_id
-        LEFT JOIN exam_attempt_question eaq ON eaq.question_id = uei.id
-        LEFT JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
-        WHERE uei.user_exam_id = :examId
-        GROUP BY uei.id, im.difficulty_code
-    ) q
-    GROUP BY q.difficulty_code
-    ORDER BY q.difficulty_code
+            ds.difficulty_code AS difficultyCode,
+            COUNT(DISTINCT ds.item_id) AS itemCount,
+            COALESCE(tp.total_points, 0) AS totalPoints,
+            COALESCE(MAX(udt_user.user_total_points), 0) AS userPoints,
+            CASE
+                WHEN COUNT(udt.user_id) > 0 THEN
+                    AVG(udt.user_total_points)
+                ELSE 0
+                END AS avgPoints,
+            CASE
+                WHEN COUNT(udcc.user_id) > 0 THEN
+                    AVG(udcc.user_correct_count)
+                ELSE 0
+                END AS avgCount,
+            COALESCE(MAX(udcc_user.user_correct_count), 0) AS userCount,
+            COALESCE(MAX(udd_user.avg_duration), 0) AS userDuration,
+            CASE
+                WHEN COUNT(udd.user_id) > 0 THEN
+                    AVG(udd.avg_duration)
+                ELSE 0
+                END AS avgDuration
+        FROM difficulty_stats ds
+                 LEFT JOIN total_points_by_difficulty tp ON ds.difficulty_code = tp.difficulty_code
+                 LEFT JOIN user_difficulty_totals udt ON ds.difficulty_code = udt.difficulty_code
+                 LEFT JOIN user_difficulty_totals udt_user ON ds.difficulty_code = udt_user.difficulty_code
+            AND udt_user.user_id = :userId
+                 LEFT JOIN user_difficulty_correct_counts udcc ON ds.difficulty_code = udcc.difficulty_code
+                 LEFT JOIN user_difficulty_correct_counts udcc_user ON ds.difficulty_code = udcc_user.difficulty_code
+            AND udcc_user.user_id = :userId
+                 LEFT JOIN user_difficulty_duration udd ON ds.difficulty_code = udd.difficulty_code
+                 LEFT JOIN user_difficulty_duration udd_user ON ds.difficulty_code = udd_user.difficulty_code
+            AND udd_user.user_id = :userId
+        GROUP BY ds.difficulty_code
+        ORDER BY ds.difficulty_code;
     """, nativeQuery = true)
     List<DetailDifficultyProjection> findDetailDifficultyByExamId(
             @Param("userId") Long userId,
@@ -105,10 +191,79 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
     );
 
     @Query(value = """
-    
+        WITH domain_totals AS (
+            SELECT
+                ed.domain_name,
+                COUNT(*) AS total_count
+            FROM user_exam_items uei
+                     JOIN item_metadata im ON uei.item_id = im.item_id
+                     JOIN item_activity_mapping iam ON im.item_id = iam.item_id
+                     JOIN evaluation_domains ed ON iam.activity_category_id = ed.domain_id
+            WHERE user_exam_id = 6
+            GROUP BY ed.domain_name
+        ),
+        user_domain_correct_counts AS (
+            SELECT
+                ed.domain_name,
+                ea.user_id,
+                SUM(COALESCE(eaq.is_correct, 0)) AS user_correct_count
+            FROM user_exam_items uei
+                     JOIN item_metadata im ON uei.item_id = im.item_id
+                     JOIN item_activity_mapping iam ON im.item_id = iam.item_id
+                     JOIN evaluation_domains ed ON iam.activity_category_id = ed.domain_id
+                     JOIN exam_attempt_question eaq ON uei.id = eaq.question_id
+                     JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
+            WHERE uei.user_exam_id = 6
+            GROUP BY ed.domain_name, ea.user_id
+        ),
+        user_domain_points AS (
+            SELECT
+                ed.domain_name,
+                ea.user_id,
+                SUM(COALESCE(eaq.points, 0)) AS user_total_points
+            FROM user_exam_items uei
+                     JOIN item_metadata im ON uei.item_id = im.item_id
+                     JOIN item_activity_mapping iam ON im.item_id = iam.item_id
+                     JOIN evaluation_domains ed ON iam.activity_category_id = ed.domain_id
+                     JOIN exam_attempt_question eaq ON uei.id = eaq.question_id
+                     JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
+            WHERE uei.user_exam_id = 6
+            GROUP BY ed.domain_name, ea.user_id
+        ),
+        user_domain_duration AS (
+            SELECT
+                ed.domain_name,
+                ea.user_id,
+                AVG(COALESCE(eaq.duration, 0)) AS avg_duration
+            FROM user_exam_items uei
+                     JOIN item_metadata im ON uei.item_id = im.item_id
+                     JOIN item_activity_mapping iam ON im.item_id = iam.item_id
+                     JOIN evaluation_domains ed ON iam.activity_category_id = ed.domain_id
+                     JOIN exam_attempt_question eaq ON uei.id = eaq.question_id
+                     JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
+            WHERE uei.user_exam_id = 6
+            GROUP BY ed.domain_name, ea.user_id
+        )
+        SELECT
+            udcc.domain_name AS domainName,
+            dt.total_count AS totalCount,
+            MAX(CASE WHEN udcc.user_id = 8 THEN udcc.user_correct_count ELSE 0 END) AS userCount,
+            AVG(udcc.user_correct_count) AS avgCount,
+            MAX(CASE WHEN udp.user_id = 8 THEN udp.user_total_points ELSE 0 END) AS userPoints,
+            AVG(udp.user_total_points) AS avgPoints,
+            MAX(CASE WHEN udd.user_id = 8 THEN udd.avg_duration ELSE 0 END) AS userDuration,
+            AVG(udd.avg_duration) AS avgDuration
+        FROM user_domain_correct_counts udcc
+                 JOIN domain_totals dt ON udcc.domain_name = dt.domain_name
+                 LEFT JOIN user_domain_points udp ON udcc.domain_name = udp.domain_name AND udcc.user_id = udp.user_id
+                 LEFT JOIN user_domain_duration udd ON udcc.domain_name = udd.domain_name AND udcc.user_id = udd.user_id
+        GROUP BY udcc.domain_name, dt.total_count
+        ORDER BY udcc.domain_name;
     """, nativeQuery = true)
     List<DetailEvaluationProjection> findDetailEvaluationByExamId(
             @Param("userId") Long userId,
             @Param("examId") Long examId
     );
+
+
 }
