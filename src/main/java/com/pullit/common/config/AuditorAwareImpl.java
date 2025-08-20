@@ -28,8 +28,7 @@ public class AuditorAwareImpl implements AuditorAware<Long> {
         }
         
         // CustomUserDetails 타입인 경우 userId 반환
-        if (authentication.getPrincipal() instanceof CustomUserDetails) {
-            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        if (authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
             return Optional.of(userDetails.getUserId());
         }
         

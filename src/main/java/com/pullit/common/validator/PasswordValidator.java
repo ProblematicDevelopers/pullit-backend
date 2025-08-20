@@ -52,10 +52,6 @@ public class PasswordValidator implements ConstraintValidator<ValidPassword, Str
         }
         
         // 특수문자 포함 검증
-        if (requireSpecialChar && !password.matches(".*[@$!%*?&#].*")) {
-            return false;
-        }
-        
-        return true;
+        return !requireSpecialChar || password.matches(".*[@$!%*?&#].*");
     }
 }
