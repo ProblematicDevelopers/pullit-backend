@@ -61,7 +61,6 @@ public interface PdfTemplateRepository extends JpaRepository<PdfTemplate, Long> 
     /**
      * 가장 많이 사용된 템플릿 Top N 조회
      *
-     * @param limit 조회할 개수
      * @return 인기 템플릿 목록
      */
     @Query("SELECT t FROM PdfTemplate t WHERE t.isActive = true " +
@@ -127,7 +126,7 @@ public interface PdfTemplateRepository extends JpaRepository<PdfTemplate, Long> 
      */
     @Modifying
     @Query("UPDATE PdfTemplate t SET t.version = t.version + 1, " +
-            "t.modifiedDate = CURRENT_TIMESTAMP " +
+            "t.updatedDate = CURRENT_TIMESTAMP " +
             "WHERE t.id = :templateId")
     void incrementVersion(@Param("templateId") Long templateId);
 
