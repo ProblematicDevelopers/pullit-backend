@@ -173,3 +173,12 @@ aws:
       excel: excels/
       temp: temp/
       profile: profiles/
+
+ocr:
+  clova:
+    invoke-url: ${CLOVA_INVOKE_URL}
+    secret-key: ${CLOVA_SECRET_KEY}
+  mathpix:
+    url: ${MATHPIX_APP_URL}
+    app-id: ${MATHPIX_APP_ID}
+    app-key: ${MATHPIX_APP_KEY}
