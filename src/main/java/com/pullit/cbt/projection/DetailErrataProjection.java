@@ -4,6 +4,8 @@ public interface DetailErrataProjection {
     Long getUserExamId();
     Long getUserId();
     Long getItemId();
+    Long getQuestionId();
+    Long getDuration();
     String getDomainName();
     Integer getItemOrder();
     Integer getPoints();
