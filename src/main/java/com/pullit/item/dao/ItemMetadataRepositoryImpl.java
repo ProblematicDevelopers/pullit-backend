@@ -162,22 +162,46 @@ public class ItemMetadataRepositoryImpl implements ItemMetadataRepositoryCustom 
     
     @Override
     public Map<Long, Long> countItemsByChapters(Long subjectId, List<Long> chapterIds) {
-        String jpql = "SELECT i.chapterHierarchy.largeChapter.code, COUNT(i) " +
-                      "FROM ItemMetadata i " +
-                      "WHERE i.subject.subjectId = :subjectId " +
-                      "AND i.chapterHierarchy.largeChapter.code IN :chapterIds " +
-                      "GROUP BY i.chapterHierarchy.largeChapter.code";
+        // 대단원별 카운트
+        String largeSql = "SELECT i.chapterHierarchy.largeChapter.code, COUNT(i) " +
+                         "FROM ItemMetadata i " +
+                         "WHERE i.subject.subjectId = :subjectId " +
+                         "AND i.chapterHierarchy.largeChapter.code IN :chapterIds " +
+                         "GROUP BY i.chapterHierarchy.largeChapter.code";
         
-        List<Object[]> results = entityManager.createQuery(jpql, Object[].class)
+        // 중단원별 카운트
+        String mediumSql = "SELECT i.chapterHierarchy.mediumChapter.code, COUNT(i) " +
+                          "FROM ItemMetadata i " +
+                          "WHERE i.subject.subjectId = :subjectId " +
+                          "AND i.chapterHierarchy.mediumChapter.code IN :chapterIds " +
+                          "GROUP BY i.chapterHierarchy.mediumChapter.code";
+        
+        // 대단원 결과 조회
+        List<Object[]> largeResults = entityManager.createQuery(largeSql, Object[].class)
                 .setParameter("subjectId", subjectId)
                 .setParameter("chapterIds", chapterIds)
                 .getResultList();
         
-        return results.stream()
+        // 중단원 결과 조회
+        List<Object[]> mediumResults = entityManager.createQuery(mediumSql, Object[].class)
+                .setParameter("subjectId", subjectId)
+                .setParameter("chapterIds", chapterIds)
+                .getResultList();
+        
+        // 결과 합치기
+        Map<Long, Long> resultMap = largeResults.stream()
                 .collect(Collectors.toMap(
                     r -> (Long) r[0],
                     r -> (Long) r[1]
                 ));
+        
+        mediumResults.forEach(r -> {
+            Long chapterId = (Long) r[0];
+            Long count = (Long) r[1];
+            resultMap.put(chapterId, count);
+        });
+        
+        return resultMap;
     }
     
     @Override

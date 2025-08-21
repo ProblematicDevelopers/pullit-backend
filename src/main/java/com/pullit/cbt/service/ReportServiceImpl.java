@@ -66,6 +66,10 @@ public class ReportServiceImpl implements ReportService {
                     .orElse(null);
             if (htmlData != null) {
                 setChoiceHtmlToResponse(response, htmlData);
+                // passageHtml이 있는 경우에만 설정
+                if (htmlData.getPassageHtml() != null && !htmlData.getPassageHtml().trim().isEmpty()) {
+                    response.setPassageHtml(htmlData.getPassageHtml());
+                }
             }
         }
         
@@ -103,7 +107,8 @@ public class ReportServiceImpl implements ReportService {
             ItemHtmlData htmlData = metadata.getHtmlData();
             builder.questionHtml(htmlData.getQuestionHtml())
                     .answerHtml(htmlData.getAnswerHtml())
-                    .explainHtml(htmlData.getExplainHtml());
+                    .explainHtml(htmlData.getExplainHtml())
+                    .passageHtml(htmlData.getPassageHtml());
         }
 
         return builder.build();

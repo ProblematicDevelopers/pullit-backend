@@ -148,7 +148,8 @@ public class ExamSearchRepositoryImpl implements ExamSearchRepository {
                         userExam.pdfUrl,                      // pdfUrl
                         userExam.createdBy,                   // Long 타입 userId
                         userExam.createdDate,
-                        userExam.updatedDate
+                        userExam.updatedDate,
+                        userExam.examType                     // UserExam의 실제 시험 타입 (CBT, PAPER 등)
                 ))
                 .from(userExam)
                 .where(
@@ -373,12 +374,15 @@ public class ExamSearchRepositoryImpl implements ExamSearchRepository {
                         userExam.gradeName,
                         userExam.termCode,
                         userExam.termName,
+                        userExam.areaCode,
+                        userExam.areaName,
                         userExam.totalItems,
                         userExam.visibility,
                         userExam.pdfUrl,
                         userExam.createdBy,
                         userExam.createdDate,
-                        userExam.updatedDate
+                        userExam.updatedDate,
+                        userExam.examType  // UserExam의 실제 시험 타입 추가
                 ))
                 .from(userExam)
                 .where(
@@ -450,12 +454,15 @@ public class ExamSearchRepositoryImpl implements ExamSearchRepository {
                         userExam.gradeName,
                         userExam.termCode,
                         userExam.termName,
+                        userExam.areaCode,
+                        userExam.areaName,
                         userExam.totalItems,
                         userExam.visibility,
                         userExam.pdfUrl,
                         userExam.createdBy,
                         userExam.createdDate,
-                        userExam.updatedDate
+                        userExam.updatedDate,
+                        userExam.examType  // UserExam의 실제 시험 타입 추가
                 ))
                 .from(userExam)
                 .where(userExam.deletedDate.isNull())

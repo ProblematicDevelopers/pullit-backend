@@ -30,6 +30,7 @@ public class ItemSearchResponse {
     private String questionHtml;
     private String answerHtml;
     private String explainHtml;
+    private String passageHtml;
 
     // 선택지 HTML 필드들 (CBT Report 전용)
     private String choice1Html;
@@ -120,7 +121,13 @@ public class ItemSearchResponse {
         if (htmlData != null) {
             builder.questionHtml(htmlData.getQuestionHtml())
                     .answerHtml(htmlData.getAnswerHtml())
-                    .explainHtml(htmlData.getExplainHtml());
+                    .explainHtml(htmlData.getExplainHtml())
+                    .choice1Html(htmlData.getChoice1Html())
+                    .choice2Html(htmlData.getChoice2Html())
+                    .choice3Html(htmlData.getChoice3Html())
+                    .choice4Html(htmlData.getChoice4Html())
+                    .choice5Html(htmlData.getChoice5Html())
+                    .passageHtml(htmlData.getPassageHtml());
         }
 
         return builder.build();

@@ -48,7 +48,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jws-algorithms: RS256
+          jws -algorithms: RS256
           public-key-location: classpath:keys/public-key.pem
       client:
         registration:
@@ -122,6 +122,7 @@ security:
     allowed-origins:
       - http://localhost:5173
       - http://localhost:5174
+      - http://localhost:5175
       - http://localhost:3000
     allowed-methods:
       - GET
@@ -173,3 +174,16 @@ aws:
       excel: excels/
       temp: temp/
       profile: profiles/
+
+ocr:
+  clova:
+    invoke-url: ${CLOVA_INVOKE_URL}
+    secret-key: ${CLOVA_SECRET_KEY}
+    header-name: "X-OCR-SECRET"
+  mathpix:
+    url: ${MATHPIX_APP_URL}
+    app-id: ${MATHPIX_APP_ID}
+    app-key: ${MATHPIX_APP_KEY}
+    app-id-header-name: "app_id"
+    header-name: "app_key"
+

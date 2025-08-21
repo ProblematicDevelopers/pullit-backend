@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class UnifiedExamResponse {
     
     /**
-     * QueryDSL Projections 전용 생성자 (17개 매개변수)
+     * QueryDSL Projections 전용 생성자 (19개 매개변수)
      * ExamSearchRepositoryImpl의 searchFromExamTable() 메서드에서 사용
      */
     public UnifiedExamResponse(
@@ -61,6 +61,39 @@ public class UnifiedExamResponse {
         this.totalPoints = null;
         this.timeLimit = null;
         this.examDate = null;
+        this.userExamType = null;
+    }
+    
+    /**
+     * QueryDSL Projections 전용 생성자 - UserExam용 (20개 매개변수)
+     * ExamSearchRepositoryImpl의 searchFromUserExamTable() 메서드에서 사용
+     */
+    public UnifiedExamResponse(
+            Long id,
+            String examType,
+            String examName,
+            Long subjectId,
+            String subjectName,
+            Long chapterCode,
+            String chapterName,
+            String gradeCode,
+            String gradeName,
+            String termCode,
+            String termName,
+            String areaCode,
+            String areaName,
+            Integer itemCount,
+            ExamVisibility visibility,
+            String pdfUrl,
+            Long createdBy,
+            LocalDateTime createdDate,
+            LocalDateTime updatedDate,
+            String userExamType  // UserExam의 실제 시험 타입
+    ) {
+        this(id, examType, examName, subjectId, subjectName, chapterCode, chapterName,
+             gradeCode, gradeName, termCode, termName, areaCode, areaName,
+             itemCount, visibility, pdfUrl, createdBy, createdDate, updatedDate);
+        this.userExamType = userExamType;
     }
     // ===== 기본 정보 =====
 
@@ -186,6 +219,12 @@ public class UnifiedExamResponse {
      */
     private String areaCode;
     private String areaName;
+    
+    /**
+     * UserExam의 실제 시험 타입 (CBT, PAPER 등)
+     * UserExam만 해당, Exam은 null
+     */
+    private String userExamType;
     // ===== 헬퍼 메서드 =====
 
     /**
