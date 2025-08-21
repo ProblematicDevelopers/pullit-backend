@@ -50,6 +50,15 @@ public class UserCreateRequest {
 //    @Schema(description = "학생 설명")
 //    private StudentInfo studentInfo;
 
+    @Schema(description = "소셜 로그인 제공자", example = "google")
+    private String socialProvider;
+
+    @Schema(description = "소셜 로그인 제공자 ID")
+    private String socialProviderId;
+
+    @Schema(description = "마케팅 정보 수신 동의")
+    private Boolean marketingAgree;
+
     public UserRole getUserRole() {
         return UserRole.valueOf(role);
     }
