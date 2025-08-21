@@ -4,7 +4,6 @@ import com.pullit.chapter.dto.response.ChapterResponse;
 import com.pullit.chapter.dto.response.LargeNode;
 import com.pullit.chapter.service.ChapterService;
 import com.pullit.common.dto.response.ApiResponse;
-import com.pullit.item.entity.Subject;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
