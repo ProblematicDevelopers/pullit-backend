@@ -159,6 +159,8 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long>, Query
             "ORDER BY ue.createdDate DESC")
     List<UserExam> findMyAndPublicExams(@Param("userId") Long userId);
 
+
+
     /**
      * 학교별 공개 시험 조회 (Teacher 엔티티 사용)
      * - Teacher 엔티티가 생성되면 주석 해제

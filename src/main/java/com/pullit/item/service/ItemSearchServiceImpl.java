@@ -124,7 +124,12 @@ public class ItemSearchServiceImpl implements ItemSearchService {
             builder.questionHtml(htmlData.getQuestionHtml())
                     .answerHtml(htmlData.getAnswerHtml())
                     .explainHtml(htmlData.getExplainHtml())
-                    .passageHtml(htmlData.getPassageHtml());
+                    .passageHtml(htmlData.getPassageHtml())
+                    .choice1Html(htmlData.getChoice1Html())
+                    .choice2Html(htmlData.getChoice2Html())
+                    .choice3Html(htmlData.getChoice3Html())
+                    .choice4Html(htmlData.getChoice4Html())
+                    .choice5Html(htmlData.getChoice5Html());
         }
 
         return builder.build();
