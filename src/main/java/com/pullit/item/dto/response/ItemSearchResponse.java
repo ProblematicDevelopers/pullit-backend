@@ -31,6 +31,13 @@ public class ItemSearchResponse {
     private String answerHtml;
     private String explainHtml;
 
+    // 선택지 HTML 필드들 (CBT Report 전용)
+    private String choice1Html;
+    private String choice2Html;
+    private String choice3Html;
+    private String choice4Html;
+    private String choice5Html;
+
     private CodeNamePair questionForm;
     private CodeNamePair difficulty;
     private ChapterHierarchy chapterHierarchy;

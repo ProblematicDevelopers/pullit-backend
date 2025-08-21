@@ -8,10 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Getter
 @Builder
@@ -47,8 +44,15 @@ public class UserCreateRequest {
     @Schema(description = "사용자 역할", example = "STUDENT")
     private String role;
 
+    @Schema(description = "선생님 설명")
+    private TeacherInfo teacherInfo;
+
+//    @Schema(description = "학생 설명")
+//    private StudentInfo studentInfo;
+
     public UserRole getUserRole() {
         return UserRole.valueOf(role);
     }
+
 
 }
