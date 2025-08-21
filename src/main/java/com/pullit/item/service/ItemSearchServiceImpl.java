@@ -123,7 +123,8 @@ public class ItemSearchServiceImpl implements ItemSearchService {
             ItemHtmlData htmlData = metadata.getHtmlData();
             builder.questionHtml(htmlData.getQuestionHtml())
                     .answerHtml(htmlData.getAnswerHtml())
-                    .explainHtml(htmlData.getExplainHtml());
+                    .explainHtml(htmlData.getExplainHtml())
+                    .passageHtml(htmlData.getPassageHtml());
         }
 
         return builder.build();
