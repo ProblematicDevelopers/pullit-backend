@@ -11,6 +11,8 @@ public class DetailErrataResponse {
     private Long userExamId;
     private Long userId;
     private Long itemId;
+    private Long questionId;
+    private Long duration;
     private String domainName;
     private Integer itemOrder;
     private Integer points;
@@ -25,6 +27,8 @@ public class DetailErrataResponse {
                 .userExamId(projection.getUserExamId())
                 .userId(projection.getUserId())
                 .itemId(projection.getItemId())
+                .questionId(projection.getQuestionId())
+                .duration(projection.getDuration())
                 .domainName(projection.getDomainName())
                 .itemOrder(projection.getItemOrder())
                 .points(projection.getPoints())
