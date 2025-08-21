@@ -37,4 +37,11 @@ public enum OcrAreaCode {
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONSTANTS_NO_INSTANCES));
     }
+    public boolean isClova() {
+        return ServiceConstants.OCR_CLOVA.equals(this.ocrTitle);
+    }
+
+    public boolean isMathpix() {
+        return ServiceConstants.OCR_MATHPIX.equals(this.ocrTitle);
+    }
 }

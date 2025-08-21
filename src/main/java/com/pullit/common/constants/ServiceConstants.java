@@ -11,7 +11,7 @@ public class ServiceConstants {
 
     // ========== ItemProcess==========
     public static final String OCR_CLOVA = "CLOVA";
-    public static final String OCR_MATHPIX = "CLOVA";
+    public static final String OCR_MATHPIX = "MATHPIX";
 
 
     // ========== 필요시 더 추가 ==========
