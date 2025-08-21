@@ -18,7 +18,6 @@ public enum OcrAreaCode {
     //mathpix
     //url: mathpix url
     //header app_id, app_key
-
     MA("수학", ServiceConstants.OCR_MATHPIX),
     KO("국어", ServiceConstants.OCR_CLOVA),
     EN("영어", ServiceConstants.OCR_CLOVA),
