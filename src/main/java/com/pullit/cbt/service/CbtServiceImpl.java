@@ -65,6 +65,7 @@ public class CbtServiceImpl implements CbtService {
 
         String examName = "[CBT]" + s.getSchoolLevelName() + " > " + s.getAreaName() + " > " + s.getSubjectName() + " "
                 + formatted;
+        System.out.println("Request timeLimit: " + request.getTimeLimit());
         UserExam exam = UserExam.builder()
                 .examName(examName)
                 .examType("CBT")
@@ -78,6 +79,7 @@ public class CbtServiceImpl implements CbtService {
                 .areaCode(s.getAreaCode())
                 .visibility(ExamVisibility.PRIVATE)
                 .build();
+        System.out.println("Created exam timeLimit: " + exam.getTimeLimit());
         try {
             UserExam u = userExamRepository.save(exam);
             return u.getId();
@@ -185,7 +187,7 @@ public class CbtServiceImpl implements CbtService {
                     .itemId(item.getItemId())
                     .subjectId(item.getSubjectId())
                     .itemOrder(order++)
-                    .points(0) // 배점은 필요시 설정
+                    .points(item.getDifficultyCode().intValue()) // 배점은 필요시 설정
                     .build();
             userExam.addExamItem(examItem);
         }
@@ -293,17 +295,23 @@ public class CbtServiceImpl implements CbtService {
                     .examId(existingAttempt.getExam().getId())
                     .status(existingAttempt.getStatus().name())
                     .userId(existingAttempt.getUser().getId())
+                    .remainTime(existingAttempt.getRemainTime())
                     .startTime(existingAttempt.getStartedAt() != null ? existingAttempt.getStartedAt().toString() : null)
                     .endTime(existingAttempt.getCompletedAt() != null ? existingAttempt.getCompletedAt().toString() : null)
                     .build();
         }
-        
+        System.out.println("userExam.getTimeLimit(): " + userExam.getTimeLimit());
+        System.out.println("userExam ID: " + userExam.getId());
+        System.out.println("userExam Name: " + userExam.getExamName());
+        System.out.println("userExam Type: " + userExam.getExamType());
+        System.out.println("userExam Total Items: " + userExam.getTotalItems());
         // 새로운 시도 생성
         AttemptExam newAttempt = AttemptExam.builder()
                 .user(user)
                 .exam(userExam)
                 .status(AttemptExam.AttemptStatus.IN_PROGRESS)
                 .startedAt(java.time.LocalDateTime.now())
+                .remainTime(userExam.getTimeLimit() != null ? userExam.getTimeLimit() * 60 : null) // 분을 초로 변환
                 .build();
         
         AttemptExam savedAttempt = attemptExamRepository.save(newAttempt);
@@ -328,6 +336,7 @@ public class CbtServiceImpl implements CbtService {
                 .examId(savedAttempt.getExam().getId())
                 .status(savedAttempt.getStatus().name())
                 .userId(savedAttempt.getUser().getId())
+                .remainTime(savedAttempt.getRemainTime())
                 .startTime(savedAttempt.getStartedAt() != null ? savedAttempt.getStartedAt().toString() : null)
                 .endTime(savedAttempt.getCompletedAt() != null ? savedAttempt.getCompletedAt().toString() : null)
                 .build();
@@ -555,8 +564,6 @@ public class CbtServiceImpl implements CbtService {
                  attemptExamQuestionRepository.save(attemptQuestion);
                  migratedQuestions++;
              }
-             System.out.println("request.getStatus(): " + request);
-             System.out.println("request.getStatus(): " + request.getStatus());
              
              if( request.getStatus().equals("DONE")) {
                 // AttemptExam 상태를 DONE으로 변경
@@ -564,9 +571,9 @@ public class CbtServiceImpl implements CbtService {
              }
              
              // 총 시험 시간이 제공된 경우 저장
-             if (request.getTotalTime() != null) {
-                 // AttemptExam에 총 시간 필드가 있다면 저장
-                 // attemptExam.setTotalTime(request.getTotalTime());
+             if (request.getRemainingTime() != null) {
+                //  AttemptExam에 총 시간 필드가 있다면 저장
+                 attemptExam.setRemainTime(request.getRemainingTime());
              }
              
              attemptExamRepository.save(attemptExam);
@@ -586,7 +593,7 @@ public class CbtServiceImpl implements CbtService {
                      .success(true)
                      .message("Redis 데이터 DB 마이그레이션 성공")
                      .migratedQuestions(migratedQuestions)
-                     .totalTime(request.getTotalTime())
+                     .remainingTime(request.getRemainingTime())
                      .completedAt(attemptExam.getCompletedAt().toString())
                      .build();
                      
@@ -596,7 +603,7 @@ public class CbtServiceImpl implements CbtService {
                      .success(false)
                      .message("Redis 데이터 DB 마이그레이션 실패: " + e.getMessage())
                      .migratedQuestions(0)
-                     .totalTime(request.getTotalTime())
+                     .remainingTime(request.getRemainingTime())
                      .completedAt(null)
                      .build();
          }

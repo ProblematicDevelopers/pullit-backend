@@ -11,6 +11,6 @@ public class RedisMigrationResponse {
     private Boolean success;
     private String message;
     private Integer migratedQuestions;
-    private Integer totalTime;
+    private Integer remainingTime;
     private String completedAt;
 }

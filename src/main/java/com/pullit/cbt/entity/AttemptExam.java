@@ -41,6 +41,9 @@ public class AttemptExam extends BaseTimeEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "remain_time")
+    private Integer remainTime; // 남은 시간 (초 단위)
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default
@@ -54,6 +57,10 @@ public class AttemptExam extends BaseTimeEntity {
     public void start() {
         this.startedAt = LocalDateTime.now();
         this.status = AttemptStatus.IN_PROGRESS;
+        // 시험 시작 시 남은 시간을 시험 제한 시간으로 초기화 (분을 초로 변환)
+        if (this.exam != null && this.exam.getTimeLimit() != null) {
+            this.remainTime = this.exam.getTimeLimit() * 60; // 분을 초로 변환
+        }
     }
 
     // 시험 완료
@@ -69,6 +76,44 @@ public class AttemptExam extends BaseTimeEntity {
         }
         LocalDateTime endTime = completedAt != null ? completedAt : LocalDateTime.now();
         return java.time.Duration.between(startedAt, endTime).toMinutes();
+    }
+
+    // 남은 시간 업데이트 (초 단위)
+    public void updateRemainTime(int elapsedSeconds) {
+        if (this.remainTime != null && this.remainTime > 0) {
+            this.remainTime = Math.max(0, this.remainTime - elapsedSeconds);
+        }
+    }
+
+    // 남은 시간 설정
+    public void setRemainTime(Integer remainTime) {
+        this.remainTime = remainTime;
+    }
+
+    // 시간 초과 여부 확인
+    public boolean isTimeExpired() {
+        return this.remainTime != null && this.remainTime <= 0;
+    }
+
+    // 남은 시간을 시:분:초 형식으로 반환
+    public String getRemainTimeFormatted() {
+        if (this.remainTime == null || this.remainTime <= 0) {
+            return "00:00:00";
+        }
+        int hours = this.remainTime / 3600;
+        int minutes = (this.remainTime % 3600) / 60;
+        int seconds = this.remainTime % 60;
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    // 남은 시간을 분:초 형식으로 반환 (시험용)
+    public String getRemainTimeFormattedForExam() {
+        if (this.remainTime == null || this.remainTime <= 0) {
+            return "00:00";
+        }
+        int minutes = this.remainTime / 60;
+        int seconds = this.remainTime % 60;
+        return String.format("%02d:%02d", minutes, seconds);
     }
 
     // 문제 추가
