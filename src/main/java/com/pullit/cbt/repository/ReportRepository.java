@@ -76,6 +76,8 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
                 uei.user_exam_id,
                 eaq_user.user_id,
                 uei.item_id,
+                eaq_user.question_id,
+                eaq_user.duration,
                 ed.domain_name,
                 uei.item_order,
                 uei.points,
@@ -102,6 +104,7 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
                     eaq.question_id,
                     eaq.points AS user_points,
                     eaq.is_correct,
+                    eaq.duration,
                     ea.user_id
                 FROM exam_attempt_question eaq
                 JOIN exam_attempt ea ON eaq.attempt_id = ea.attempt_id

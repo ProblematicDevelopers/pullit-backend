@@ -61,11 +61,12 @@ public class itemProcessController {
         String ocrTitle = OcrAreaCode.fromString(areaCode).getOcrTitle();
         log.info("file: {}", file.getSize());
         log.info("ocrTitle: {}", ocrTitle);
-
+        log.info("areaCode: {}", areaCode);
         String resultText = "";
+        OcrAreaCode area = OcrAreaCode.fromString(areaCode);
 
         // 국/영/사/역/도 → Clova OCR
-        if (ocrTitle.equals(ServiceConstants.OCR_CLOVA)) {
+        if (area.isClova()) {
             log.debug("call Clova OCR");
             // MultipartFile → Base64 변환 or 업로드 후 URL 전달
             String base64 = java.util.Base64.getEncoder().encodeToString(file.getBytes());
@@ -78,26 +79,30 @@ public class itemProcessController {
             img.setUrl(null); // URL 대신 data로 전송
 
             req.setImages(List.of(img));
+
             req.setLang("ko");
+
             req.setRequestId("req-" + System.currentTimeMillis());
             req.setResultType("string");
             req.setTimestamp(System.currentTimeMillis());
             req.setVersion("V1");
 
             ClovaResponse clovaRes = ocrService.callClovaOcrApi(req);
+            log.info("clovaRes: {}", clovaRes);
+
             resultText = clovaRes.getImages().get(0).getFields().stream()
                     .map(ClovaResponse.Field::getInferText)
                     .reduce("", (a, b) -> a + " " + b);
 
             // 수/과 → Mathpix OCR
-        } else if (ocrTitle.equals(ServiceConstants.OCR_MATHPIX)) {
+            }else if (area.isMathpix()) {
             log.debug("call Mathpix OCR");
             String base64 = "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(file.getBytes());
 
             MathpixResponse mathpixRes = ocrService.callMathpixOcrApi(base64);
             resultText = mathpixRes.getText();
         }
-
+        log.info("resultText: {}", resultText);
         return ResponseEntity.ok(ApiResponse.success("OCR 결과", resultText));
     }
 }
