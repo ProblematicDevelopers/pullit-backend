@@ -15,6 +15,7 @@ public class DetailEvaluationResponse {
     private Long totalCount;
     private Long userCount;
     private Double avgCount;
+    private Long totalPoints;
     private Long userPoints;
     private Double avgPoints;
     private Double userDuration;
@@ -26,6 +27,7 @@ public class DetailEvaluationResponse {
                 .totalCount(projection.getTotalCount())
                 .userCount(projection.getUserCount())
                 .avgCount(projection.getAvgCount())
+                .totalPoints(projection.getTotalPoints())
                 .userPoints(projection.getUserPoints())
                 .avgPoints(projection.getAvgPoints())
                 .userDuration(projection.getUserDuration())

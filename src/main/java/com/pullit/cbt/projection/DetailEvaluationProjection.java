@@ -5,6 +5,7 @@ public interface DetailEvaluationProjection {
     Long getTotalCount();
     Long getUserCount();
     Double getAvgCount();
+    Long getTotalPoints();
     Long getUserPoints();
     Double getAvgPoints();
     Double getUserDuration();
