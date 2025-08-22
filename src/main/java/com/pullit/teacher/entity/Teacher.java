@@ -18,7 +18,7 @@ public class Teacher extends BaseTimeEntity {
     private User user;
 
     @Column(name="school_name")
-    private String schoolName;
+    private Long schoolId;
 
     @Embedded
     @AttributeOverrides({

@@ -1,5 +1,6 @@
 package com.pullit.item.service;
 
+import com.pullit.common.annotation.LoggingTrace;
 import com.pullit.item.dao.ItemHtmlDataRepository;
 import com.pullit.item.dao.ItemImageDataRepository;
 import com.pullit.item.dao.ItemMetadataRepository;
@@ -33,12 +34,14 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     private final ItemMetadataRepository itemMetadataRepository;
 
     @Override
+    @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true, logParameters = true)
     public Page<ItemSearchResponse> searchItems(ItemSearchRequest request) {
-        log.debug("문항 검색 요청:{}",request);
+        log.info("[인덱스 없음] 문항 검색 시작: {}",request);
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
 
         Page<ItemMetadata> itemPage = itemMetadataRepository.searchItems(request, pageable);
+        log.info("검색 결과: {} 건", itemPage.getTotalElements());
 
         return itemPage.map(this::convertToResponse);
     }
@@ -52,20 +55,26 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     }
 
     @Override
-    @Cacheable(value = "chapterItemCounts", key = "#subjectId + '-' + #chapterIds.hashCode()")
+    // @Cacheable(value = "chapterItemCounts", key = "#subjectId + '-' + #chapterIds.hashCode()") // 캐시 비활성화 - 성능 측정
+    @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public Map<Long, Long> getItemCountsByChapters(Long subjectId, List<Long> chapterIds) {
+        log.info("[인덱스 없음] 챕터별 문항 수 집계: subjectId={}, chapterIds={}", subjectId, chapterIds);
         return itemMetadataRepository.countItemsByChapters(subjectId, chapterIds);
     }
 
     @Override
-    @Cacheable(value = "difficultyItemCounts", key = "#subjectId")
+    // @Cacheable(value = "difficultyItemCounts", key = "#subjectId") // 캐시 비활성화 - 성능 측정
+    @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public Map<Long, Long> getItemCountsByDifficulty(Long subjectId) {
+        log.info("[인덱스 없음] 난이도별 문항 수 집계: subjectId={}", subjectId);
         return itemMetadataRepository.countItemsByDifficulty(subjectId);
     }
 
     @Override
-    @Cacheable(value = "questionFormItemCounts", key = "#subjectId")
+    // @Cacheable(value = "questionFormItemCounts", key = "#subjectId") // 캐시 비활성화 - 성능 측정
+    @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public Map<Long, Long> getItemCountsByQuestionForm(Long subjectId) {
+        log.info("[인덱스 없음] 문제 형식별 문항 수 집계: subjectId={}", subjectId);
         return itemMetadataRepository.countItemsByQuestionForm(subjectId);
     }
 

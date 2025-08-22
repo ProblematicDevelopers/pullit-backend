@@ -1,5 +1,6 @@
 package com.pullit.exam.service;
 
+import com.pullit.common.annotation.LoggingTrace;
 import com.pullit.exam.dto.request.ExamSearchRequest;
 import com.pullit.exam.dto.response.ExamCountBySubjectResponse;
 import com.pullit.exam.dto.response.ExamWithItemsResponse;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StopWatch;
 
 import java.util.List;
 import java.util.Map;
@@ -58,9 +60,10 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * - 캐싱으로 응답 속도 향상
      */
     @Override
-    @Cacheable(value = "examQuickSearch", key = "#keyword + ':' + #limit")
+    // @Cacheable(value = "examQuickSearch", key = "#keyword + ':' + #limit") // 캐시 비활성화 - 성능 측정
+    @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true, logParameters = true)
     public List<UnifiedExamResponse> quickSearch(String keyword, int limit) {
-        log.debug("빠른 검색: keyword={}, limit={}", keyword, limit);
+        log.info("[인덱스 없음] 빠른 검색 시작: keyword={}, limit={}", keyword, limit);
 
         // 키워드 최소 길이 체크
         if (keyword == null || keyword.trim().length() < 2) {
@@ -95,9 +98,10 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * - 캐싱으로 자주 조회되는 데이터 최적화
      */
     @Override
-    @Cacheable(value = "recentExams", key = "#limit")
+    // @Cacheable(value = "recentExams", key = "#limit") // 캐시 비활성화 - 성능 측정
+    @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public List<UnifiedExamResponse> getRecentExams(int limit) {
-        log.debug("최근 시험 조회: limit={}", limit);
+        log.info("[인덱스 없음] 최근 시험 조회: limit={}", limit);
 
         // limit 범위 체크 (최대 50개)
         int searchLimit = Math.min(limit, 50);
@@ -245,15 +249,19 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * - 실제 데이터베이스에서 학년, 과목, 학기, 교과서 옵션을 조회
      */
     @Override
-    @Cacheable("filterOptions")
+    // @Cacheable("filterOptions") // 캐시 비활성화 - 성능 측정
+    @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     @SuppressWarnings("unchecked")
     public Map<String, Object> getFilterOptions() {
-        log.debug("필터 옵션 조회 시작");
+        log.warn("[인덱스 없음] 필터 옵션 조회 - FULL TABLE SCAN 예상!");
+        
+        StopWatch stopWatch = new StopWatch("FilterOptions");
         
         Map<String, Object> filterOptions = new HashMap<>();
         
         try {
             // 학년 옵션 조회
+            stopWatch.start("학년 조회");
             String gradeQuery = """
                 SELECT DISTINCT s.grade_code, s.grade_name, COUNT(e.exam_id) as exam_count
                 FROM subjects s 
@@ -273,8 +281,11 @@ public class ExamSearchServiceImpl implements ExamSearchService {
                     "count", ((Number) row[2]).intValue()
                 ))
                 .toList();
+            stopWatch.stop();
+            log.info("학년 조회 완료: {} 건", grades.size());
 
             // 과목 옵션 조회 (area_code 기준)
+            stopWatch.start("과목 조회");
             String subjectQuery = """
                 SELECT DISTINCT s.area_code, s.area_name, COUNT(e.exam_id) as exam_count
                 FROM subjects s 
@@ -294,8 +305,11 @@ public class ExamSearchServiceImpl implements ExamSearchService {
                     "count", ((Number) row[2]).intValue()
                 ))
                 .toList();
+            stopWatch.stop();
+            log.info("과목 조회 완료: {} 건", subjects.size());
 
             // 학기 옵션 조회
+            stopWatch.start("학기 조회");
             String termQuery = """
                 SELECT DISTINCT s.term_code, s.term_name, COUNT(e.exam_id) as exam_count
                 FROM subjects s 
@@ -315,12 +329,15 @@ public class ExamSearchServiceImpl implements ExamSearchService {
                     "count", ((Number) row[2]).intValue()
                 ))
                 .toList();
+            stopWatch.stop();
+            log.info("학기 조회 완료: {} 건", terms.size());
 
             // 교과서 옵션 조회 (최신 데이터만)
+            stopWatch.start("교과서 조회");
             String textbookQuery = """
                 SELECT s.subject_id, s.subject_name, s.area_code, s.grade_code, COUNT(e.exam_id) as exam_count
-                FROM subjects s 
-                LEFT JOIN exams e ON s.subject_id = e.subject_id 
+                FROM subjects s
+                LEFT JOIN exams e ON s.subject_id = e.subject_id
                 WHERE s.subject_id IS NOT NULL 
                 GROUP BY s.subject_id, s.subject_name, s.area_code, s.grade_code 
                 ORDER BY s.area_code, s.grade_code, s.subject_name
@@ -338,6 +355,10 @@ public class ExamSearchServiceImpl implements ExamSearchService {
                     "count", ((Number) row[4]).intValue()
                 ))
                 .toList();
+            stopWatch.stop();
+            log.info("교과서 조회 완료: {} 건", textbooks.size());
+
+            log.info("필터 옵션 상세 실행 시간:\n{}", stopWatch.prettyPrint());
 
             filterOptions.put("grades", grades);
             filterOptions.put("subjects", subjects);
@@ -367,9 +388,10 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * @return 문항 ID 목록
      */
     @Override
-    @Cacheable(value = "examItemIds", key = "#examId", condition = "#examId != null")
+    // @Cacheable(value = "examItemIds", key = "#examId", condition = "#examId != null") // 캐시 비활성화 - 성능 측정
+    @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public List<Long> getExamItemIds(Long examId) {
-        log.debug("시험지 문항 ID 목록 조회 시작: examId={}", examId);
+        log.info("[인덱스 없음] 시험지 문항 ID 조회: examId={}", examId);
         
         if (examId == null) {
             log.warn("examId가 null입니다");
