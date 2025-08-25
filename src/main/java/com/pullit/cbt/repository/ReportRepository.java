@@ -236,6 +236,7 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
         WITH domain_totals AS (
             SELECT
                 ed.domain_name,
+                SUM(COALESCE(uei.points, 0)) AS total_points,
                 COUNT(*) AS total_count
             FROM user_exam_items uei
                      JOIN item_metadata im ON uei.item_id = im.item_id
@@ -291,6 +292,7 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
             dt.total_count AS totalCount,
             MAX(CASE WHEN udcc.user_id = 8 THEN udcc.user_correct_count ELSE 0 END) AS userCount,
             AVG(udcc.user_correct_count) AS avgCount,
+            dt.total_points AS totalPoints,
             MAX(CASE WHEN udp.user_id = 8 THEN udp.user_total_points ELSE 0 END) AS userPoints,
             AVG(udp.user_total_points) AS avgPoints,
             MAX(CASE WHEN udd.user_id = 8 THEN udd.avg_duration ELSE 0 END) AS userDuration,
