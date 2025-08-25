@@ -4,9 +4,15 @@ import com.pullit.common.embedded.StringCodeNamePair;
 import com.pullit.common.entity.BaseTimeEntity;
 import com.pullit.user.entity.User;
 import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name="teachers")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Teacher extends BaseTimeEntity {
 
     @Id
