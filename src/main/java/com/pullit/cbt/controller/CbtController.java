@@ -17,6 +17,7 @@ import com.pullit.common.dto.response.ApiResponse;
 import com.pullit.exam.entity.UserExam;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/cbt")
 @RequiredArgsConstructor
+@Tag(name = "Cbt", description = "CBT API")
 public class CbtController {
     private final CbtService cbtService;
 

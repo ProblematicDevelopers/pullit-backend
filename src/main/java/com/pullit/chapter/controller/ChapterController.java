@@ -5,6 +5,7 @@ import com.pullit.chapter.dto.response.LargeNode;
 import com.pullit.chapter.service.ChapterService;
 import com.pullit.common.dto.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/chapter")
 @RequiredArgsConstructor
+@Tag(name = "Chapter", description = "챕터 API")
 public class ChapterController {
     private final ChapterService chapterService;
 
