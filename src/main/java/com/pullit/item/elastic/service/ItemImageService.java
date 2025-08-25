@@ -50,6 +50,10 @@ public class ItemImageService {
                     .field("passage_id")
                     .value(passageId)
             ));
+        } else {
+            baseBoolQuery.mustNot(mn -> mn.exists(e -> e
+                    .field("passage_id")
+            ));
         }
 
         // 제외 문항 제외
