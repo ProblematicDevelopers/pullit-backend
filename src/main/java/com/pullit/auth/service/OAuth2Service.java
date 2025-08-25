@@ -81,6 +81,7 @@ public class OAuth2Service {
                 return LoginResponse.builder()
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
+                        .user(com.pullit.user.dto.response.UserResponse.from(user))
                         .tokenType("Bearer")
                         .expiresIn(86400L)
                         .user(com.pullit.user.dto.response.UserResponse.from(user))
@@ -130,6 +131,7 @@ public class OAuth2Service {
                 return OAuth2LoginResult.builder()
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
+                        .user(com.pullit.user.dto.response.UserResponse.from(user))  // 사용자 정보 추가
                         .provider(provider)
                         .providerId(providerId)
                         .email(email)

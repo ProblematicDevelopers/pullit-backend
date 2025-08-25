@@ -1,5 +1,6 @@
 package com.pullit.auth.dto.response;
 
+import com.pullit.user.dto.response.UserResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,4 +18,7 @@ public class OAuth2LoginResult {
     private String email;
     private String name;
     private String username;
+    private UserResponse user;  // 사용자 정보 추가
 }
+
+

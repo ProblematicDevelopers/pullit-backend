@@ -24,4 +24,9 @@ public class SchoolServiceImpl  implements SchoolService {
         }
         return schoolRepository.findBySchoolNameContaining(schoolName);
     }
+    
+    @Override
+    public List<School> findAll() {
+        return schoolRepository.findAll();
+    }
 }
