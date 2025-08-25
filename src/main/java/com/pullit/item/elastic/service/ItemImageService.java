@@ -11,6 +11,7 @@ import com.pullit.item.elastic.document.ItemImageDocument;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,10 +40,10 @@ public class ItemImageService {
         long mediumChapterId = truncateCode(topicChapterId, 8);
         long smallChapterId = truncateCode(topicChapterId, 10);
 
-        // 기본 필터: 난이도 동일
-        BoolQuery.Builder baseBoolQuery = new BoolQuery.Builder()
-                .must(m -> m.term(t -> t.field("difficulty_code").value(difficultyCode)));
-
+        
+        // 기본 필터 기능
+        BoolQuery.Builder baseBoolQuery = new BoolQuery.Builder();
+        
         // 지문 id 동일
         if (passageId != -1) {
             baseBoolQuery.must(mn -> mn.term(t -> t
@@ -61,18 +62,36 @@ public class ItemImageService {
             ));
         }
 
+        // 가중치 함수
+        List<FunctionScore> functions = new ArrayList<>();
+
+        // difficulty_code 가중치
+        if (1 <= difficultyCode && difficultyCode <= 5) {
+            int stdDifficultyCode = passageId != -1? 1 : difficultyCode;
+            for (int diff = 1; diff <= 5; diff++) {
+                double weight = 5.0 - Math.abs(diff - stdDifficultyCode);
+                final int diffValue = diff;
+                functions.add(FunctionScore.of(f -> f
+                        .filter(q -> q.term(t -> t.field("difficulty_code").value(diffValue)))
+                        .weight(weight)
+                ));
+            }
+        }
+
+        // 계층형 id 기반 가중치
+        functions.add(buildWeightedFilter("subject_id", subjectId, 15.0));
+        functions.add(buildWeightedFilter("large_chapter_id", largeChapterId, 25.0));
+        functions.add(buildWeightedFilter("medium_chapter_id", mediumChapterId, 35.0));
+        functions.add(buildWeightedFilter("small_chapter_id", smallChapterId, 45.0));
+        functions.add(buildWeightedFilter("topic_chapter_id", topicChapterId, 55.0));
+
+
         // function_score 쿼리: 계층별 필터 + 가중치
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(INDEX_NAME)
                 .query(q -> q.functionScore(fs -> fs
                         .query(qb -> qb.bool(baseBoolQuery.build()))
-                        .functions(
-                                buildWeightedFilter("subject_id", subjectId, 1.0),
-                                buildWeightedFilter("large_chapter_id", largeChapterId, 2.0),
-                                buildWeightedFilter("medium_chapter_id", mediumChapterId, 3.0),
-                                buildWeightedFilter("small_chapter_id", smallChapterId, 4.0),
-                                buildWeightedFilter("topic_chapter_id", topicChapterId, 5.0)
-                        )
+                        .functions(functions)
                         .scoreMode(FunctionScoreMode.Sum)
                         .boostMode(FunctionBoostMode.Replace)
                 ))
