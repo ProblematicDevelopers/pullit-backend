@@ -22,6 +22,9 @@ public class ItemImageDocument implements JsonpSerializable {
     @JsonProperty("item_id")
     private Long itemId;
 
+    @JsonProperty("passage_id")
+    private Long passageId;
+
     @JsonProperty("passage_url")
     private String passageUrl;
 
@@ -56,6 +59,7 @@ public class ItemImageDocument implements JsonpSerializable {
     public void serialize(JsonGenerator jsonGenerator, JsonpMapper jsonpMapper) {
         jsonGenerator.writeStartObject();
         if (itemId != null) { jsonGenerator.write("item_id", itemId); }
+        if (passageId != null) { jsonGenerator.write("passage_id", passageId); }
         if (passageUrl != null) { jsonGenerator.write("passage_url", passageUrl); }
         if (questionUrl != null) { jsonGenerator.write("question_url", questionUrl); }
         if (answerUrl != null) { jsonGenerator.write("answer_url", answerUrl); }
@@ -74,6 +78,7 @@ public class ItemImageDocument implements JsonpSerializable {
 
     protected static void setupItemImageDocumentDeserializer(ObjectDeserializer<ItemImageDocument.Builder> op) {
         op.add(Builder::itemId, JsonpDeserializer.longDeserializer(), "item_id");
+        op.add(Builder::passageId, JsonpDeserializer.longDeserializer(), "passage_id");
         op.add(Builder::passageUrl, JsonpDeserializer.stringDeserializer(), "passage_url");
         op.add(Builder::questionUrl, JsonpDeserializer.stringDeserializer(), "question_url");
         op.add(Builder::answerUrl, JsonpDeserializer.stringDeserializer(), "answer_url");
@@ -88,6 +93,7 @@ public class ItemImageDocument implements JsonpSerializable {
 
     public static class Builder implements ObjectBuilder<ItemImageDocument> {
         private Long itemId;
+        private Long passageId;
         private String passageUrl;
         private String questionUrl;
         private String answerUrl;
@@ -103,6 +109,12 @@ public class ItemImageDocument implements JsonpSerializable {
             this.itemId = itemId;
             return this;
         }
+
+        public Builder passageId(Long passageId) {
+            this.passageId = passageId;
+            return this;
+        }
+
         public Builder passageUrl(String passageUrl) {
             this.passageUrl = passageUrl;
             return this;
@@ -147,6 +159,7 @@ public class ItemImageDocument implements JsonpSerializable {
         public ItemImageDocument build() {
             return new ItemImageDocument(
                     itemId,
+                    passageId,
                     passageUrl,
                     questionUrl,
                     answerUrl,

@@ -28,6 +28,7 @@ public class ItemImageService {
     public List<ItemImageDocument> findSimilarItems(
             long topicChapterId,
             int difficultyCode,
+            long passageId,
             List<Long> excludeItemIds,
             int size
     ) throws IOException {
@@ -38,10 +39,19 @@ public class ItemImageService {
         long mediumChapterId = truncateCode(topicChapterId, 8);
         long smallChapterId = truncateCode(topicChapterId, 10);
 
-        // 기본 필터: 난이도 동일, 제외 문항 제외
+        // 기본 필터: 난이도 동일
         BoolQuery.Builder baseBoolQuery = new BoolQuery.Builder()
                 .must(m -> m.term(t -> t.field("difficulty_code").value(difficultyCode)));
 
+        // 지문 id 동일
+        if (passageId != -1) {
+            baseBoolQuery.must(mn -> mn.term(t -> t
+                    .field("passage_id")
+                    .value(passageId)
+            ));
+        }
+
+        // 제외 문항 제외
         if (excludeItemIds != null && !excludeItemIds.isEmpty()) {
             baseBoolQuery.mustNot(mn -> mn.terms(t -> t
                     .field("item_id")

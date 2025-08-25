@@ -32,6 +32,7 @@ public class ItemController {
         List<ItemImageDocument> similarItems = itemImageService.findSimilarItems(
                 request.getTopicChapterId(),
                 request.getDifficultyCode(),
+                request.getPassageId(),
                 request.getExcludeItemIds(),
                 request.getSize()
         );
@@ -45,6 +46,7 @@ public class ItemController {
     public static class SimilarItemsRequest {
         private long topicChapterId;
         private int difficultyCode;
+        private long passageId = -1;
         private List<Long> excludeItemIds = new ArrayList<>();
         private int size = 20;
     }
