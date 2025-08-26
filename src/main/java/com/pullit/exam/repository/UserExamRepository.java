@@ -10,6 +10,7 @@ import org.springframework.data.querydsl.QuerydslPredicateExecutor;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,17 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long>, Query
      * 시험 이름으로 검색 (삭제된 것 제외)
      */
     List<UserExam> findByExamNameContainingIgnoreCaseAndDeletedDateIsNull(String keyword);
+
+    /**
+     * 특정 클래스의 오늘 날짜 이후 시험들을 빠른 날짜순으로 조회
+     * @param classId 클래스 ID
+     * @param visibility 공개 여부
+     * @param examDate 기준 날짜 (보통 오늘 날짜)
+     * @return 빠른 날짜순으로 정렬된 시험 목록
+     */
+    List<UserExam> findByClassIdAndVisibilityAndExamDateGreaterThanEqualOrderByExamDateAsc(Long classId, ExamVisibility visibility, LocalDate examDate);
+
+    UserExam findByIdAndClassId(Long examId, Long classId);
 
     /**
      * 생성자 ID로 검색 (삭제된 것 제요)
