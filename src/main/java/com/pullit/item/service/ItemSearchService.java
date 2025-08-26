@@ -1,7 +1,9 @@
 package com.pullit.item.service;
 
 import com.pullit.item.dto.request.ItemSearchRequest;
+import com.pullit.item.dto.request.SmartSelectionRequest;
 import com.pullit.item.dto.response.ItemSearchResponse;
+import com.pullit.item.dto.response.SmartSelectionResponse;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
@@ -26,4 +28,5 @@ public interface ItemSearchService {
 
     List<ItemSearchResponse> getItemsByIds(List<Long> itemIds);
 
+    SmartSelectionResponse smartRandomSelection(SmartSelectionRequest request);
 }
