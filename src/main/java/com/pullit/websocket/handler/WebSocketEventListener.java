@@ -28,13 +28,13 @@ public class WebSocketEventListener {
         // 세션에서 사용자 정보 가져오기
         String username = (String) headerAccessor.getSessionAttributes().get("username");
         Long userId = (Long) headerAccessor.getSessionAttributes().get("userId");
-        Long classId = (Long) headerAccessor.getSessionAttributes().get("classId");
+        String channelName = (String) headerAccessor.getSessionAttributes().get("channelName");
 
-        if (username != null && userId != null && classId != null) {
-            log.info("User Disconnected: {} (userId: {}, classId: {})", username, userId, classId);
+        if (username != null && userId != null && channelName != null) {
+            log.info("User Disconnected: {} (userId: {}, channelName: {})", username, userId, channelName);
 
             // 접속 상태에서 사용자 제거
-            onlineStatusService.removeUserFromClass(classId, userId);
+            onlineStatusService.removeUserFromClass(channelName, userId);
 
             // 클래스 전체에 접속 상태 업데이트 브로드캐스트
             // (이 부분은 SimpMessagingTemplate이 필요하므로 별도 처리 필요)
