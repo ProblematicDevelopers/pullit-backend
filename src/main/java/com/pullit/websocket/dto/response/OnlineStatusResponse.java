@@ -9,7 +9,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class OnlineStatusResponse {
-    private Long classId;
+    private String channelName; // 채널 이름
     private List<UserOnlineStatus> onlineUsers;
     private String timestamp;
     private String status; // SUCCESS, ERROR

@@ -10,7 +10,7 @@ public class ChatMessageResponse {
     private Long messageId;
     private String messageType; // MESSAGE, JOIN, LEAVE, NOTICE
     private String content;
-    private Long classId;
+    private String channelName; // 채널 이름
     private Long senderId;
     private String senderName;
     private String senderRole; // TEACHER, STUDENT
