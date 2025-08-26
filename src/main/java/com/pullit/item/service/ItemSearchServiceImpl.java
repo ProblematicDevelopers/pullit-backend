@@ -1,6 +1,8 @@
 package com.pullit.item.service;
 
 import com.pullit.common.annotation.LoggingTrace;
+import com.pullit.common.annotation.RedisCacheable;
+import com.pullit.common.annotation.RedisCacheEvict;
 import com.pullit.item.config.DifficultyDistribution;
 import com.pullit.item.dao.ItemHtmlDataRepository;
 import com.pullit.item.dao.ItemImageDataRepository;
@@ -35,6 +37,11 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     private final ItemMetadataRepository itemMetadataRepository;
 
     @Override
+    @RedisCacheable(
+        key = "'item:search:' + #request.hashCode()",
+        ttl = 30,  // 30분 TTL
+        condition = "#request != null"
+    )
     @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true, logParameters = true)
     public Page<ItemSearchResponse> searchItems(ItemSearchRequest request) {
         log.info("[인덱스 없음] 문항 검색 시작: {}",request);
@@ -48,6 +55,12 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     }
 
     @Override
+    @RedisCacheable(
+        key = "'item:detail:' + #itemId",
+        ttl = 60,  // 1시간 TTL
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#itemId != null"
+    )
     public ItemSearchResponse getItemDetail(Long itemId) {
         ItemMetadata metadata = itemMetadataRepository.findByItemId(itemId)
                 .orElseThrow(() -> new EntityNotFoundException("문항을 찾을 수 없습니다: " + itemId));
@@ -56,7 +69,12 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     }
 
     @Override
-    // @Cacheable(value = "chapterItemCounts", key = "#subjectId + '-' + #chapterIds.hashCode()") // 캐시 비활성화 - 성능 측정
+    @RedisCacheable(
+        key = "'item:count:chapters:' + #subjectId + ':' + #chapterIds.hashCode()",
+        ttl = 60,  // 1시간 TTL
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#subjectId != null && #chapterIds != null"
+    )
     @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public Map<Long, Long> getItemCountsByChapters(Long subjectId, List<Long> chapterIds) {
         log.info("[인덱스 없음] 챕터별 문항 수 집계: subjectId={}, chapterIds={}", subjectId, chapterIds);
@@ -64,7 +82,12 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     }
 
     @Override
-    // @Cacheable(value = "difficultyItemCounts", key = "#subjectId") // 캐시 비활성화 - 성능 측정
+    @RedisCacheable(
+        key = "'item:count:difficulty:' + #subjectId",
+        ttl = 60,  // 1시간 TTL
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#subjectId != null"
+    )
     @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public Map<Long, Long> getItemCountsByDifficulty(Long subjectId) {
         log.info("[인덱스 없음] 난이도별 문항 수 집계: subjectId={}", subjectId);
@@ -72,7 +95,12 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     }
 
     @Override
-    // @Cacheable(value = "questionFormItemCounts", key = "#subjectId") // 캐시 비활성화 - 성능 측정
+    @RedisCacheable(
+        key = "'item:count:questionForm:' + #subjectId",
+        ttl = 60,  // 1시간 TTL
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#subjectId != null"
+    )
     @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public Map<Long, Long> getItemCountsByQuestionForm(Long subjectId) {
         log.info("[인덱스 없음] 문제 형식별 문항 수 집계: subjectId={}", subjectId);
@@ -80,11 +108,23 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     }
 
     @Override
+    @RedisCacheable(
+        key = "'item:count:subjects:' + #subjectIds.hashCode()",
+        ttl = 60,  // 1시간 TTL
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#subjectIds != null && !#subjectIds.isEmpty()"
+    )
     public Map<Long, Long> getItemCountsBySubjects(List<Long> subjectIds) {
         return itemMetadataRepository.countItemsBySubjects(subjectIds);
     }
 
     @Override
+    @RedisCacheable(
+        key = "'item:byPassage:' + #passageId",
+        ttl = 60,  // 1시간 TTL
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#passageId != null"
+    )
     public List<ItemSearchResponse> getItemsByPassage(Long passageId) {
         List<ItemMetadata> items = itemMetadataRepository.findByPassageId(passageId);
 
@@ -94,6 +134,11 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     }
 
     @Override
+    @RedisCacheable(
+        key = "'item:byIds:' + #itemIds.hashCode()",
+        ttl = 30,  // 30분 TTL
+        condition = "#itemIds != null && !#itemIds.isEmpty()"
+    )
     public List<ItemSearchResponse> getItemsByIds(List<Long> itemIds) {
         List<ItemMetadata> items = itemMetadataRepository.findAllById(itemIds);
 
@@ -201,7 +246,7 @@ public class ItemSearchServiceImpl implements ItemSearchService {
                             .collect(Collectors.toList());
 
                     List<ItemMetadata> passageItems =
-                            itemMetadataRepository.findItemsByPassageIds(passageIds);
+                            itemMetadataRepository.findItemsByPassageIds(request.getSubjectId(), passageIds);
 
                     // 지문 그룹 정보 생성
                     Map<Long, List<ItemMetadata>> passageMap = passageItems.stream()
@@ -268,6 +313,9 @@ public class ItemSearchServiceImpl implements ItemSearchService {
 
         Map<Long, Integer> adjusted = new HashMap<>(targetCounts);
         List<Long> difficulties = Arrays.asList(1L, 2L, 3L);
+        
+        // 요청된 전체 개수
+        int requestedTotal = targetCounts.values().stream().mapToInt(Integer::intValue).sum();
 
         // 각 난이도별로 부족한 수량 계산
         Map<Long, Integer> deficits = new HashMap<>();
@@ -304,6 +352,47 @@ public class ItemSearchServiceImpl implements ItemSearchService {
 
                     log.info("난이도 {}에서 {}로 {}개 재분배",
                             deficitDifficulty, targetDifficulty, redistribution);
+                }
+            }
+        }
+        
+        // 최종 조정: 정확히 요청된 개수만큼 맞추기
+        int currentTotal = adjusted.values().stream().mapToInt(Integer::intValue).sum();
+        
+        if (currentTotal != requestedTotal) {
+            int difference = requestedTotal - currentTotal;
+            log.info("최종 조정 필요: 현재 {}개, 목표 {}개, 차이 {}개", currentTotal, requestedTotal, difference);
+            
+            if (difference > 0) {
+                // 더 필요한 경우: 가용한 난이도에 추가 할당
+                for (Long difficulty : difficulties) {
+                    if (difference <= 0) break;
+                    
+                    long available = availableCounts.get(difficulty).get("total");
+                    int current = adjusted.get(difficulty);
+                    int canAdd = (int)available - current;
+                    
+                    if (canAdd > 0) {
+                        int toAdd = Math.min(canAdd, difference);
+                        adjusted.put(difficulty, current + toAdd);
+                        difference -= toAdd;
+                        log.info("난이도 {}에 {}개 추가 할당", difficulty, toAdd);
+                    }
+                }
+            } else if (difference < 0) {
+                // 초과한 경우: 비율에 따라 감소
+                int excess = -difference;
+                for (Long difficulty : difficulties) {
+                    if (excess <= 0) break;
+                    
+                    int current = adjusted.get(difficulty);
+                    if (current > 0) {
+                        // 현재 비율에 따라 감소
+                        int toReduce = Math.min(current, excess);
+                        adjusted.put(difficulty, current - toReduce);
+                        excess -= toReduce;
+                        log.info("난이도 {}에서 {}개 감소", difficulty, toReduce);
+                    }
                 }
             }
         }

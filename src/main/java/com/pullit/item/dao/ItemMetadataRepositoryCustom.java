@@ -74,10 +74,11 @@ public interface ItemMetadataRepositoryCustom {
 
     /**
      * 지문에 묶인 모든 문제 조회
+     * @param subjectId 교과서 ID
      * @param passageIds 지문 ID목록
      * @return Item List
      */
-    List<ItemMetadata> findItemsByPassageIds(List<Long> passageIds);
+    List<ItemMetadata> findItemsByPassageIds(Long subjectId, List<Long> passageIds);
     /**
      * 난이도별 선택 가능 단위 수 조회 (독립 문항 + 지문 그룹)
      */
