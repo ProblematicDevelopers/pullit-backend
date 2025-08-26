@@ -308,7 +308,8 @@ public class ItemMetadataRepositoryImpl implements ItemMetadataRepositoryCustom 
         } else {
             // 지문 그룹 선택 (각 지문에서 대표 문항 하나씩만 선택)
             jpql = "SELECT i FROM ItemMetadata i " +
-                    "WHERE i.itemId IN (" +
+                    "WHERE i.subject.subjectId = :subjectId " +
+                    "AND i.itemId IN (" +
                     "  SELECT MIN(i2.itemId) FROM ItemMetadata i2 " +
                     "  WHERE i2.subject.subjectId = :subjectId " +
                     "  AND (" +
@@ -379,16 +380,18 @@ public class ItemMetadataRepositoryImpl implements ItemMetadataRepositoryCustom 
         return result;    }
 
     @Override
-    public List<ItemMetadata> findItemsByPassageIds(List<Long> passageIds) {
+    public List<ItemMetadata> findItemsByPassageIds(Long subjectId, List<Long> passageIds) {
         if (passageIds == null || passageIds.isEmpty()) {
             return new ArrayList<>();
         }
 
         String jpql = "SELECT i FROM ItemMetadata i " +
-                "WHERE i.passageId IN :passageIds " +
+                "WHERE i.subject.subjectId = :subjectId " +
+                "AND i.passageId IN :passageIds " +
                 "ORDER BY i.passageId, i.itemId";
 
         return entityManager.createQuery(jpql, ItemMetadata.class)
+                .setParameter("subjectId", subjectId)
                 .setParameter("passageIds", passageIds)
                 .getResultList();
     }
