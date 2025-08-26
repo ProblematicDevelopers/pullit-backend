@@ -201,156 +201,261 @@ public class ItemSearchServiceImpl implements ItemSearchService {
         log.info("스마트 문항 선택 시작 -교과서 :{}, 문항수 {}, 난이도 {}",request.getSubjectId(), request.getItemCount(),request.getDifficulty());
 
         DifficultyDistribution distribution = DifficultyDistribution.fromCode(request.getDifficulty());
-
         Map<Long, Integer> targetCounts = calculateTargetCounts(distribution, request.getItemCount());
 
+        // 가용한 문항 수 조회
         Map<Long, Map<String,Long>> availableCounts = new HashMap<>();
         for(Long difficulty : Arrays.asList(1L,2L,3L)) {
             availableCounts.put(difficulty,
                     itemMetadataRepository.countSelectionUnitsByDifficulty(
                             request.getSubjectId(), request.getChapters(), difficulty));
         }
+        
+        // 초기 분배 조정
         Map<Long, Integer> adjustedCounts = adjustDistribution(targetCounts, availableCounts);
 
-        // 문항 선택 수행
+        // 결과 저장용 변수들
         List<ItemMetadata> selectedItems = new ArrayList<>();
         List<SmartSelectionResponse.PassageGroupInfo> passageGroups = new ArrayList<>();
         List<SmartSelectionResponse.FallbackAction> fallbackActions = new ArrayList<>();
+        Set<Long> selectedItemIds = new HashSet<>();
         
-        // 실제 선택된 문항 수 추적
-        int totalSelectedItems = 0;
-        int targetItemCount = request.getItemCount();
+        // 요청된 정확한 개수 추적
+        final int targetItemCount = request.getItemCount();
+        int remainingNeeded = targetItemCount;
+        
+        log.info("목표 문항 수: {}, 난이도별 분배: {}", targetItemCount, adjustedCounts);
 
+        // Phase 1: 난이도별 목표에 따른 선택
         for (Map.Entry<Long, Integer> entry : adjustedCounts.entrySet()) {
-            Long difficulty = entry.getKey();
-            int count = entry.getValue();
-
-            if (count <= 0) continue;
+            if (remainingNeeded <= 0) break;
             
-            // 이미 목표 개수에 도달했으면 종료
-            if (totalSelectedItems >= targetItemCount) {
-                break;
-            }
-
-            // includePassage 여부에 따라 독립 문항과 지문 그룹 비율 결정
+            Long difficulty = entry.getKey();
+            int targetForDifficulty = Math.min(entry.getValue(), remainingNeeded);
+            
+            if (targetForDifficulty <= 0) continue;
+            
+            log.info("난이도 {} 선택 시작: 목표 {}개, 현재 필요 {}개", difficulty, targetForDifficulty, remainingNeeded);
+            
+            // 독립 문항과 지문 그룹 비율 계산
             int independentTarget;
             int passageGroupTarget;
             
-            if (request.isIncludePassage()) {
-                // 지문 포함 시: 7:3 비율로 분배
-                independentTarget = (int)(count * 0.7);
-                passageGroupTarget = count - independentTarget;
+            if (request.isIncludePassage() && remainingNeeded > 5) {
+                // 지문 포함이고 충분한 문항이 필요한 경우
+                independentTarget = (int)(targetForDifficulty * 0.7);
+                passageGroupTarget = targetForDifficulty - independentTarget;
             } else {
-                // 지문 미포함 시: 모두 독립 문항으로만 선택
-                independentTarget = count;
+                // 지문 미포함이거나 적은 수의 문항만 필요한 경우
+                independentTarget = targetForDifficulty;
                 passageGroupTarget = 0;
             }
 
             // 독립 문항 선택
-            List<ItemMetadata> independentItems =
-                    itemMetadataRepository.findRandomItemsWithPassageGrouping(
-                            request.getSubjectId(), request.getChapters(),
-                            difficulty, independentTarget, true);
-
-            selectedItems.addAll(independentItems);
-            totalSelectedItems += independentItems.size();
-
-            // 지문 그룹 선택
-            if (request.isIncludePassage() && passageGroupTarget > 0) {
-                List<ItemMetadata> passageRepresentatives =
+            if (independentTarget > 0 && remainingNeeded > 0) {
+                List<ItemMetadata> independentItems =
                         itemMetadataRepository.findRandomItemsWithPassageGrouping(
                                 request.getSubjectId(), request.getChapters(),
-                                difficulty, passageGroupTarget, false);
+                                difficulty, Math.min(independentTarget, remainingNeeded), true);
+                
+                // 중복 제거
+                independentItems = independentItems.stream()
+                        .filter(item -> !selectedItemIds.contains(item.getItemId()))
+                        .collect(Collectors.toList());
+                
+                if (!independentItems.isEmpty()) {
+                    selectedItems.addAll(independentItems);
+                    selectedItemIds.addAll(independentItems.stream()
+                            .map(ItemMetadata::getItemId)
+                            .collect(Collectors.toSet()));
+                    remainingNeeded -= independentItems.size();
+                    log.info("난이도 {} 독립 문항 {}개 선택, 남은 필요 수: {}", 
+                            difficulty, independentItems.size(), remainingNeeded);
+                }
+            }
 
-                // 선택된 지문의 모든 연결 문항 가져오기
-                if (!passageRepresentatives.isEmpty()) {
-                    List<Long> passageIds = passageRepresentatives.stream()
-                            .map(ItemMetadata::getPassageId)
-                            .filter(Objects::nonNull)
-                            .distinct()
-                            .collect(Collectors.toList());
+            // 지문 그룹 선택 (남은 개수가 충분할 때만)
+            if (request.isIncludePassage() && passageGroupTarget > 0 && remainingNeeded >= 3) {
+                // 지문 그룹은 최소 3개 이상의 문항이 필요할 때만 선택
+                int maxPassageGroups = remainingNeeded / 3; // 평균적으로 지문당 3개 문항 가정
+                int actualPassageTarget = Math.min(passageGroupTarget, maxPassageGroups);
+                
+                if (actualPassageTarget > 0) {
+                    List<ItemMetadata> passageRepresentatives =
+                            itemMetadataRepository.findRandomItemsWithPassageGrouping(
+                                    request.getSubjectId(), request.getChapters(),
+                                    difficulty, actualPassageTarget, false);
 
-                    List<ItemMetadata> passageItems =
-                            itemMetadataRepository.findItemsByPassageIds(request.getSubjectId(), passageIds);
+                    if (!passageRepresentatives.isEmpty()) {
+                        List<Long> passageIds = passageRepresentatives.stream()
+                                .map(ItemMetadata::getPassageId)
+                                .filter(Objects::nonNull)
+                                .distinct()
+                                .collect(Collectors.toList());
 
-                    // 지문 그룹 정보 생성
-                    Map<Long, List<ItemMetadata>> passageMap = passageItems.stream()
-                            .collect(Collectors.groupingBy(ItemMetadata::getPassageId));
+                        List<ItemMetadata> passageItems =
+                                itemMetadataRepository.findItemsByPassageIds(request.getSubjectId(), passageIds);
+                        
+                        // 중복 제거
+                        passageItems = passageItems.stream()
+                                .filter(item -> !selectedItemIds.contains(item.getItemId()))
+                                .collect(Collectors.toList());
+                        
+                        // 남은 개수를 초과하지 않도록 지문 그룹 조정
+                        if (passageItems.size() > remainingNeeded) {
+                            // 지문 그룹을 하나씩 제거하면서 적절한 수로 조정
+                            Map<Long, List<ItemMetadata>> passageMap = passageItems.stream()
+                                    .collect(Collectors.groupingBy(ItemMetadata::getPassageId));
+                            
+                            List<ItemMetadata> adjustedPassageItems = new ArrayList<>();
+                            for (Map.Entry<Long, List<ItemMetadata>> passageEntry : passageMap.entrySet()) {
+                                if (adjustedPassageItems.size() + passageEntry.getValue().size() <= remainingNeeded) {
+                                    adjustedPassageItems.addAll(passageEntry.getValue());
+                                    
+                                    // 지문 그룹 정보 추가
+                                    SmartSelectionResponse.PassageGroupInfo groupInfo =
+                                            SmartSelectionResponse.PassageGroupInfo.builder()
+                                                    .passageId(passageEntry.getKey())
+                                                    .itemCount(passageEntry.getValue().size())
+                                                    .representativeDifficulty(difficulty)
+                                                    .itemIds(passageEntry.getValue().stream()
+                                                            .map(ItemMetadata::getItemId)
+                                                            .collect(Collectors.toList()))
+                                                    .build();
+                                    passageGroups.add(groupInfo);
+                                }
+                            }
+                            passageItems = adjustedPassageItems;
+                        } else {
+                            // 모든 지문 그룹 정보 생성
+                            Map<Long, List<ItemMetadata>> passageMap = passageItems.stream()
+                                    .collect(Collectors.groupingBy(ItemMetadata::getPassageId));
 
-                    for (Map.Entry<Long, List<ItemMetadata>> passageEntry : passageMap.entrySet()) {
-                        SmartSelectionResponse.PassageGroupInfo groupInfo =
-                                SmartSelectionResponse.PassageGroupInfo.builder()
-                                        .passageId(passageEntry.getKey())
-                                        .itemCount(passageEntry.getValue().size())
-                                        .representativeDifficulty(difficulty)
-                                        .itemIds(passageEntry.getValue().stream()
-                                                .map(ItemMetadata::getItemId)
-                                                .collect(Collectors.toList()))
-                                        .build();
-                        passageGroups.add(groupInfo);
+                            for (Map.Entry<Long, List<ItemMetadata>> passageEntry : passageMap.entrySet()) {
+                                SmartSelectionResponse.PassageGroupInfo groupInfo =
+                                        SmartSelectionResponse.PassageGroupInfo.builder()
+                                                .passageId(passageEntry.getKey())
+                                                .itemCount(passageEntry.getValue().size())
+                                                .representativeDifficulty(difficulty)
+                                                .itemIds(passageEntry.getValue().stream()
+                                                        .map(ItemMetadata::getItemId)
+                                                        .collect(Collectors.toList()))
+                                                .build();
+                                passageGroups.add(groupInfo);
+                            }
+                        }
+
+                        if (!passageItems.isEmpty()) {
+                            selectedItems.addAll(passageItems);
+                            selectedItemIds.addAll(passageItems.stream()
+                                    .map(ItemMetadata::getItemId)
+                                    .collect(Collectors.toSet()));
+                            remainingNeeded -= passageItems.size();
+                            log.info("난이도 {} 지문 그룹 {}개(문항 {}개) 선택, 남은 필요 수: {}", 
+                                    difficulty, passageIds.size(), passageItems.size(), remainingNeeded);
+                        }
                     }
-
-                    selectedItems.addAll(passageItems);
-                    totalSelectedItems += passageItems.size();
                 }
             }
         }
         
-        // 부족한 경우 추가 선택
-        if (totalSelectedItems < targetItemCount) {
-            int shortage = targetItemCount - totalSelectedItems;
-            log.info("선택된 문항 부족: {}개 추가 선택 필요", shortage);
+        // Phase 2: 부족한 문항 채우기 - 모든 난이도에서 가능한 문항 수집
+        if (remainingNeeded > 0) {
+            log.info("Phase 2: {}개 문항 추가 필요", remainingNeeded);
             
-            // 모든 난이도에서 추가 독립 문항 선택 시도
-            for (Long difficulty : Arrays.asList(1L, 2L, 3L)) {
-                if (shortage <= 0) break;
+            // 우선순위: 중간(2) -> 하(1) -> 상(3) 순서로 시도
+            List<Long> fillPriority = Arrays.asList(2L, 1L, 3L);
+            
+            for (Long difficulty : fillPriority) {
+                if (remainingNeeded <= 0) break;
+                
+                // 해당 난이도에서 가능한 최대한 많은 문항 조회
+                int queryLimit = Math.min(remainingNeeded * 2, 100); // 여유있게 조회
                 
                 List<ItemMetadata> additionalItems =
                         itemMetadataRepository.findRandomItemsWithPassageGrouping(
                                 request.getSubjectId(), request.getChapters(),
-                                difficulty, shortage, true);
+                                difficulty, queryLimit, true);
                 
-                // 이미 선택된 문항 제외
-                Set<Long> selectedIds = selectedItems.stream()
-                        .map(ItemMetadata::getItemId)
-                        .collect(Collectors.toSet());
-                
-                additionalItems = additionalItems.stream()
-                        .filter(item -> !selectedIds.contains(item.getItemId()))
-                        .limit(shortage)
+                // 이미 선택된 문항 제외하고 필요한 만큼만 선택
+                List<ItemMetadata> filteredItems = additionalItems.stream()
+                        .filter(item -> !selectedItemIds.contains(item.getItemId()))
+                        .limit(remainingNeeded)
                         .collect(Collectors.toList());
                 
-                if (!additionalItems.isEmpty()) {
-                    selectedItems.addAll(additionalItems);
-                    shortage -= additionalItems.size();
-                    totalSelectedItems += additionalItems.size();
-                    log.info("난이도 {}에서 {}개 추가 선택", difficulty, additionalItems.size());
+                if (!filteredItems.isEmpty()) {
+                    selectedItems.addAll(filteredItems);
+                    selectedItemIds.addAll(filteredItems.stream()
+                            .map(ItemMetadata::getItemId)
+                            .collect(Collectors.toSet()));
+                    remainingNeeded -= filteredItems.size();
+                    log.info("난이도 {}에서 {}개 추가 선택, 남은 필요 수: {}", 
+                            difficulty, filteredItems.size(), remainingNeeded);
                 }
             }
         }
         
-        // 초과한 경우 제거
+        // Phase 3: 그래도 부족하면 모든 조건 완화하여 선택
+        if (remainingNeeded > 0) {
+            log.info("Phase 3: 조건 완화하여 {}개 추가 선택 시도", remainingNeeded);
+            
+            // 모든 난이도에서 동시에 조회
+            for (Long difficulty : Arrays.asList(1L, 2L, 3L)) {
+                if (remainingNeeded <= 0) break;
+                
+                // 더 많은 문항 조회 (지문 포함)
+                List<ItemMetadata> emergencyItems =
+                        itemMetadataRepository.findRandomItemsWithPassageGrouping(
+                                request.getSubjectId(), request.getChapters(),
+                                difficulty, remainingNeeded * 3, false);
+                
+                List<ItemMetadata> filteredEmergency = emergencyItems.stream()
+                        .filter(item -> !selectedItemIds.contains(item.getItemId()))
+                        .limit(remainingNeeded)
+                        .collect(Collectors.toList());
+                
+                if (!filteredEmergency.isEmpty()) {
+                    selectedItems.addAll(filteredEmergency);
+                    selectedItemIds.addAll(filteredEmergency.stream()
+                            .map(ItemMetadata::getItemId)
+                            .collect(Collectors.toSet()));
+                    remainingNeeded -= filteredEmergency.size();
+                    log.info("긴급 선택: 난이도 {}에서 {}개 추가", difficulty, filteredEmergency.size());
+                }
+            }
+        }
+        
+        // Phase 4: 초과한 경우 정확히 맞추기
         if (selectedItems.size() > targetItemCount) {
-            // 지문이 포함된 경우 지문 단위로 제거
-            if (request.isIncludePassage() && !passageGroups.isEmpty()) {
-                while (selectedItems.size() > targetItemCount && !passageGroups.isEmpty()) {
-                    // 마지막 지문 그룹 제거
-                    SmartSelectionResponse.PassageGroupInfo lastGroup = 
-                        passageGroups.get(passageGroups.size() - 1);
-                    
-                    selectedItems.removeIf(item -> 
-                        item.getPassageId() != null && 
-                        item.getPassageId().equals(lastGroup.getPassageId()));
-                    
-                    passageGroups.remove(passageGroups.size() - 1);
+            log.info("초과 문항 제거: {}개 -> {}개", selectedItems.size(), targetItemCount);
+            
+            // 지문 그룹을 우선적으로 제거 (큰 덩어리 제거)
+            if (!passageGroups.isEmpty()) {
+                List<SmartSelectionResponse.PassageGroupInfo> sortedGroups = new ArrayList<>(passageGroups);
+                sortedGroups.sort((a, b) -> Integer.compare(b.getItemCount(), a.getItemCount()));
+                
+                for (SmartSelectionResponse.PassageGroupInfo group : sortedGroups) {
+                    if (selectedItems.size() - group.getItemCount() >= targetItemCount) {
+                        // 이 그룹을 제거해도 목표 개수 이상이면 제거
+                        selectedItems.removeIf(item -> 
+                                item.getPassageId() != null && 
+                                item.getPassageId().equals(group.getPassageId()));
+                        passageGroups.remove(group);
+                        
+                        if (selectedItems.size() <= targetItemCount) {
+                            break;
+                        }
+                    }
                 }
             }
             
-            // 그래도 초과하면 뒤에서부터 제거
-            if (selectedItems.size() > targetItemCount) {
-                selectedItems = new ArrayList<>(selectedItems.subList(0, targetItemCount));
+            // 그래도 초과하면 뒤에서부터 개별 제거
+            while (selectedItems.size() > targetItemCount) {
+                selectedItems.remove(selectedItems.size() - 1);
             }
         }
+        
+        log.info("최종 선택 완료: 요청 {}개, 실제 {}개", targetItemCount, selectedItems.size());
 
         // Fallback 액션 기록
         recordFallbackActions(targetCounts, adjustedCounts, fallbackActions);

@@ -1,6 +1,7 @@
 package com.pullit.common.aspect;
 
 import com.pullit.common.annotation.RedisCacheable;
+import com.pullit.common.cache.dto.CacheablePage;
 import com.pullit.common.cache.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.core.annotation.Order;
+import org.springframework.data.domain.Page;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 
 @Slf4j
 @Aspect
@@ -45,9 +49,22 @@ public class RedisCacheAspect {
         // 3. 메소드 반환 타입 정보 획득
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Class<?> returnType = signature.getReturnType();
+        
+        // Page 타입인지 확인
+        boolean isPageType = Page.class.isAssignableFrom(returnType);
 
         // 4. 캐시에서 값 조회 시도
-        Object cachedValue = redisCacheService.get(cacheKey, returnType);
+        Object cachedValue = null;
+        if (isPageType) {
+            // Page 타입인 경우 CacheablePage로 조회 후 변환
+            CacheablePage<?> cacheablePage = redisCacheService.get(cacheKey, CacheablePage.class);
+            if (cacheablePage != null) {
+                cachedValue = cacheablePage.toPage();
+            }
+        } else {
+            // 일반 타입인 경우 그대로 조회
+            cachedValue = redisCacheService.get(cacheKey, returnType);
+        }
         
         if (cachedValue != null) {
             // 캐시 히트 - 캐시된 값 반환
@@ -62,7 +79,14 @@ public class RedisCacheAspect {
 
         // 6. 실행 결과를 캐시에 저장 (null이 아닌 경우만)
         if (result != null) {
-            redisCacheService.put(cacheKey, result, cacheable.ttl(), cacheable.timeUnit());
+            if (isPageType && result instanceof Page) {
+                // Page 타입인 경우 CacheablePage로 변환하여 저장
+                CacheablePage<?> cacheablePage = CacheablePage.from((Page<?>) result);
+                redisCacheService.put(cacheKey, cacheablePage, cacheable.ttl(), cacheable.timeUnit());
+            } else {
+                // 일반 타입인 경우 그대로 저장
+                redisCacheService.put(cacheKey, result, cacheable.ttl(), cacheable.timeUnit());
+            }
             log.info("캐시 저장 - 키: {}, TTL: {} {}", 
                 cacheKey, cacheable.ttl(), cacheable.timeUnit());
         }
