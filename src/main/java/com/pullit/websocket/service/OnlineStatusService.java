@@ -23,6 +23,14 @@ public class OnlineStatusService {
         log.info("Updating user status: userId={}, classId={}, status={}", 
                 request.getUserId(), request.getClassId(), request.getStatus());
         
+        // null 체크
+        if (request == null || request.getClassId() == null || request.getUserId() == null) {
+            log.error("Invalid request data: request={}, classId={}, userId={}", 
+                     request, request != null ? request.getClassId() : null, 
+                     request != null ? request.getUserId() : null);
+            return;
+        }
+        
         Long classId = request.getClassId();
         Long userId = request.getUserId();
         
@@ -46,7 +54,20 @@ public class OnlineStatusService {
     public void removeUserFromClass(Long classId, Long userId) {
         log.info("Removing user from class: userId={}, classId={}", userId, classId);
         
-        Map<Long, UserOnlineInfo> users = classOnlineUsers.get(classId);
+        // null 체크
+        if (classId == null || userId == null) {
+            log.error("Invalid parameters for removeUserFromClass: classId={}, userId={}", classId, userId);
+            return;
+        }
+        
+        Map<Long, UserOnlineInfo> users = null;
+        try {
+            users = classOnlineUsers.get(classId);
+        } catch (NullPointerException e) {
+            log.error("NullPointerException when removing user from classId: {}", classId, e);
+            return;
+        }
+        
         if (users != null) {
             users.remove(userId);
             
@@ -60,7 +81,25 @@ public class OnlineStatusService {
     public OnlineStatusResponse getClassOnlineStatus(Long classId) {
         log.info("Getting online status for class: {}", classId);
         
-        Map<Long, UserOnlineInfo> users = classOnlineUsers.get(classId);
+        // null 체크
+        if (classId == null) {
+            log.error("ClassId is null for getClassOnlineStatus");
+            return OnlineStatusResponse.builder()
+                    .classId(null)
+                    .onlineUsers(List.of())
+                    .timestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                    .status("ERROR")
+                    .errorMessage("ClassId is null")
+                    .build();
+        }
+        
+        Map<Long, UserOnlineInfo> users = null;
+        try {
+            users = classOnlineUsers.get(classId);
+        } catch (NullPointerException e) {
+            log.error("NullPointerException when getting users for classId: {}", classId, e);
+            users = null;
+        }
         List<OnlineStatusResponse.UserOnlineStatus> onlineUsers = null;
         
         if (users != null) {
@@ -80,7 +119,19 @@ public class OnlineStatusService {
     }
 
     public int getOnlineUserCount(Long classId) {
-        Map<Long, UserOnlineInfo> users = classOnlineUsers.get(classId);
+        // null 체크
+        if (classId == null) {
+            log.error("ClassId is null for getOnlineUserCount");
+            return 0;
+        }
+        
+        Map<Long, UserOnlineInfo> users = null;
+        try {
+            users = classOnlineUsers.get(classId);
+        } catch (NullPointerException e) {
+            log.error("NullPointerException when getting users count for classId: {}", classId, e);
+            return 0;
+        }
         return users != null ? users.size() : 0;
     }
 

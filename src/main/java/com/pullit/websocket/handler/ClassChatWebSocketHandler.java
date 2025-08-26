@@ -55,6 +55,15 @@ public class ClassChatWebSocketHandler {
                        SimpMessageHeaderAccessor headerAccessor) {
         log.info("User joining chat: {}", chatMessage.getSenderName());
         
+        // null 체크
+        if (chatMessage.getSenderId() == null || chatMessage.getClassId() == null || 
+            chatMessage.getSenderName() == null || chatMessage.getSenderRole() == null) {
+            log.error("Invalid chat message data: senderId={}, classId={}, senderName={}, senderRole={}", 
+                     chatMessage.getSenderId(), chatMessage.getClassId(), 
+                     chatMessage.getSenderName(), chatMessage.getSenderRole());
+            return;
+        }
+        
         // WebSocket 세션에 사용자 정보 추가
         headerAccessor.getSessionAttributes().put("username", chatMessage.getSenderName());
         headerAccessor.getSessionAttributes().put("userId", chatMessage.getSenderId());
@@ -94,6 +103,13 @@ public class ClassChatWebSocketHandler {
     @MessageMapping("/chat.leaveUser")
     public void leaveUser(@Payload ChatMessageRequest chatMessage) {
         log.info("User leaving chat: {}", chatMessage.getSenderName());
+        
+        // null 체크
+        if (chatMessage.getSenderId() == null || chatMessage.getClassId() == null) {
+            log.error("Invalid leave message data: senderId={}, classId={}", 
+                     chatMessage.getSenderId(), chatMessage.getClassId());
+            return;
+        }
         
         // 접속 상태에서 제거
         onlineStatusService.removeUserFromClass(chatMessage.getClassId(), chatMessage.getSenderId());
@@ -155,6 +171,13 @@ public class ClassChatWebSocketHandler {
     public void updateOnlineStatus(@Payload OnlineStatusRequest request) {
         log.info("Updating online status: {}", request);
         
+        // null 체크
+        if (request == null || request.getClassId() == null) {
+            log.error("Invalid online status request: request={}, classId={}", 
+                     request, request != null ? request.getClassId() : null);
+            return;
+        }
+        
         try {
             // 접속 상태 업데이트
             onlineStatusService.updateUserStatus(request);
@@ -172,12 +195,29 @@ public class ClassChatWebSocketHandler {
     public void getOnlineStatus(@Payload OnlineStatusRequest request) {
         log.info("Getting online status for class: {}", request.getClassId());
         
+        // null 체크
+        if (request == null || request.getClassId() == null || request.getUserId() == null) {
+            log.error("Invalid online status request: request={}, classId={}, userId={}", 
+                     request, request != null ? request.getClassId() : null, 
+                     request != null ? request.getUserId() : null);
+            return;
+        }
+        
         try {
-            OnlineStatusResponse response = onlineStatusService.getClassOnlineStatus(request.getClassId());
+            // 추가 null 체크 (이중 보안)
+            Long classId = request.getClassId();
+            Long userId = request.getUserId();
+            
+            if (classId == null || userId == null) {
+                log.error("Null values detected in try block: classId={}, userId={}", classId, userId);
+                return;
+            }
+            
+            OnlineStatusResponse response = onlineStatusService.getClassOnlineStatus(classId);
             
             // 요청한 사용자에게만 응답
             messagingTemplate.convertAndSendToUser(
-                request.getUserId().toString(),
+                userId.toString(),
                 "/queue/online/status",
                 response
             );
@@ -189,6 +229,12 @@ public class ClassChatWebSocketHandler {
 
     // 접속 상태 브로드캐스트 (내부 메서드)
     private void broadcastOnlineStatus(Long classId) {
+        // null 체크
+        if (classId == null) {
+            log.error("ClassId is null for broadcastOnlineStatus");
+            return;
+        }
+        
         try {
             OnlineStatusResponse response = onlineStatusService.getClassOnlineStatus(classId);
             messagingTemplate.convertAndSend("/topic/class/" + classId + "/online", response);
