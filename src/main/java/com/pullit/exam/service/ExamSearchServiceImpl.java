@@ -44,6 +44,18 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * - 다양한 필터 조건 적용
      */
     @Override
+    @RedisCacheable(
+        key = "'exam:search:' + " +
+              "(#request.keyword != null ? #request.keyword : 'none') + ':' + " +
+              "(#request.gradeCode != null ? #request.gradeCode : 'all') + ':' + " +
+              "(#request.areaCode != null ? #request.areaCode : 'all') + ':' + " +
+              "(#request.termCode != null ? #request.termCode : 'all') + ':' + " +
+              "(#request.subjectId != null ? #request.subjectId : 'all') + ':' + " +
+              "(#request.visibility != null ? #request.visibility : 'all') + ':' + " +
+              "'page:' + #pageable.getPageNumber() + ':size:' + #pageable.getPageSize()",
+        ttl = 30,  // 30분 TTL (검색 결과는 적당한 시간 캐싱)
+        condition = "#request != null"
+    )
     public Page<UnifiedExamResponse> searchExams(ExamSearchRequest request, Pageable pageable) {
         log.debug("통합 시험 검색 시작: {}", request);
 

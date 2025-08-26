@@ -38,7 +38,12 @@ public class ItemSearchServiceImpl implements ItemSearchService {
 
     @Override
     @RedisCacheable(
-        key = "'item:search:' + #request.hashCode()",
+        key = "'item:search:' + " +
+              "(#request.keyword != null ? #request.keyword : 'none') + ':' + " +
+              "(#request.subjectId != null ? #request.subjectId : 'all') + ':' + " +
+              "(#request.chapterId != null ? #request.chapterId : 'all') + ':' + " +
+              "(#request.difficulty != null ? #request.difficulty : 'all') + ':' + " +
+              "(#request.questionForm != null ? #request.questionForm : 'all')",
         ttl = 30,  // 30분 TTL
         condition = "#request != null"
     )
@@ -70,7 +75,7 @@ public class ItemSearchServiceImpl implements ItemSearchService {
 
     @Override
     @RedisCacheable(
-        key = "'item:count:chapters:' + #subjectId + ':' + #chapterIds.hashCode()",
+        key = "'item:count:chapters:' + #subjectId + ':' + T(java.lang.String).join(',', #chapterIds)",
         ttl = 60,  // 1시간 TTL
         timeUnit = java.util.concurrent.TimeUnit.MINUTES,
         condition = "#subjectId != null && #chapterIds != null"
@@ -109,7 +114,7 @@ public class ItemSearchServiceImpl implements ItemSearchService {
 
     @Override
     @RedisCacheable(
-        key = "'item:count:subjects:' + #subjectIds.hashCode()",
+        key = "'item:count:subjects:' + T(java.lang.String).join(',', #subjectIds)",
         ttl = 60,  // 1시간 TTL
         timeUnit = java.util.concurrent.TimeUnit.MINUTES,
         condition = "#subjectIds != null && !#subjectIds.isEmpty()"
@@ -135,7 +140,7 @@ public class ItemSearchServiceImpl implements ItemSearchService {
 
     @Override
     @RedisCacheable(
-        key = "'item:byIds:' + #itemIds.hashCode()",
+        key = "'item:byIds:' + T(java.lang.String).join(',', #itemIds)",
         ttl = 30,  // 30분 TTL
         condition = "#itemIds != null && !#itemIds.isEmpty()"
     )
@@ -211,16 +216,35 @@ public class ItemSearchServiceImpl implements ItemSearchService {
         List<ItemMetadata> selectedItems = new ArrayList<>();
         List<SmartSelectionResponse.PassageGroupInfo> passageGroups = new ArrayList<>();
         List<SmartSelectionResponse.FallbackAction> fallbackActions = new ArrayList<>();
+        
+        // 실제 선택된 문항 수 추적
+        int totalSelectedItems = 0;
+        int targetItemCount = request.getItemCount();
 
         for (Map.Entry<Long, Integer> entry : adjustedCounts.entrySet()) {
             Long difficulty = entry.getKey();
             int count = entry.getValue();
 
             if (count <= 0) continue;
+            
+            // 이미 목표 개수에 도달했으면 종료
+            if (totalSelectedItems >= targetItemCount) {
+                break;
+            }
 
-            // 독립 문항과 지문 그룹의 비율 결정 (7:3 정도로 설정)
-            int independentTarget = (int)(count * 0.7);
-            int passageGroupTarget = count - independentTarget;
+            // includePassage 여부에 따라 독립 문항과 지문 그룹 비율 결정
+            int independentTarget;
+            int passageGroupTarget;
+            
+            if (request.isIncludePassage()) {
+                // 지문 포함 시: 7:3 비율로 분배
+                independentTarget = (int)(count * 0.7);
+                passageGroupTarget = count - independentTarget;
+            } else {
+                // 지문 미포함 시: 모두 독립 문항으로만 선택
+                independentTarget = count;
+                passageGroupTarget = 0;
+            }
 
             // 독립 문항 선택
             List<ItemMetadata> independentItems =
@@ -229,6 +253,7 @@ public class ItemSearchServiceImpl implements ItemSearchService {
                             difficulty, independentTarget, true);
 
             selectedItems.addAll(independentItems);
+            totalSelectedItems += independentItems.size();
 
             // 지문 그룹 선택
             if (request.isIncludePassage() && passageGroupTarget > 0) {
@@ -266,15 +291,64 @@ public class ItemSearchServiceImpl implements ItemSearchService {
                     }
 
                     selectedItems.addAll(passageItems);
+                    totalSelectedItems += passageItems.size();
                 }
             }
-
-            // 부족한 경우 fallback 기록
-            int actualCount = independentItems.size() +
-                    (request.isIncludePassage() ? passageGroups.size() : 0);
-
-            if (actualCount < count) {
-                log.warn("난이도 {}에서 목표 {}개 중 {}개만 선택", difficulty, count, actualCount);
+        }
+        
+        // 부족한 경우 추가 선택
+        if (totalSelectedItems < targetItemCount) {
+            int shortage = targetItemCount - totalSelectedItems;
+            log.info("선택된 문항 부족: {}개 추가 선택 필요", shortage);
+            
+            // 모든 난이도에서 추가 독립 문항 선택 시도
+            for (Long difficulty : Arrays.asList(1L, 2L, 3L)) {
+                if (shortage <= 0) break;
+                
+                List<ItemMetadata> additionalItems =
+                        itemMetadataRepository.findRandomItemsWithPassageGrouping(
+                                request.getSubjectId(), request.getChapters(),
+                                difficulty, shortage, true);
+                
+                // 이미 선택된 문항 제외
+                Set<Long> selectedIds = selectedItems.stream()
+                        .map(ItemMetadata::getItemId)
+                        .collect(Collectors.toSet());
+                
+                additionalItems = additionalItems.stream()
+                        .filter(item -> !selectedIds.contains(item.getItemId()))
+                        .limit(shortage)
+                        .collect(Collectors.toList());
+                
+                if (!additionalItems.isEmpty()) {
+                    selectedItems.addAll(additionalItems);
+                    shortage -= additionalItems.size();
+                    totalSelectedItems += additionalItems.size();
+                    log.info("난이도 {}에서 {}개 추가 선택", difficulty, additionalItems.size());
+                }
+            }
+        }
+        
+        // 초과한 경우 제거
+        if (selectedItems.size() > targetItemCount) {
+            // 지문이 포함된 경우 지문 단위로 제거
+            if (request.isIncludePassage() && !passageGroups.isEmpty()) {
+                while (selectedItems.size() > targetItemCount && !passageGroups.isEmpty()) {
+                    // 마지막 지문 그룹 제거
+                    SmartSelectionResponse.PassageGroupInfo lastGroup = 
+                        passageGroups.get(passageGroups.size() - 1);
+                    
+                    selectedItems.removeIf(item -> 
+                        item.getPassageId() != null && 
+                        item.getPassageId().equals(lastGroup.getPassageId()));
+                    
+                    passageGroups.remove(passageGroups.size() - 1);
+                }
+            }
+            
+            // 그래도 초과하면 뒤에서부터 제거
+            if (selectedItems.size() > targetItemCount) {
+                selectedItems = new ArrayList<>(selectedItems.subList(0, targetItemCount));
             }
         }
 
