@@ -2,7 +2,9 @@ package com.pullit.item.controller;
 
 import com.pullit.common.dto.response.ApiResponse;
 import com.pullit.item.dto.request.ItemSearchRequest;
+import com.pullit.item.dto.request.SmartSelectionRequest;
 import com.pullit.item.dto.response.ItemSearchResponse;
+import com.pullit.item.dto.response.SmartSelectionResponse;
 import com.pullit.item.service.ItemSearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -109,13 +111,17 @@ public class ItemSearchController {
         return ResponseEntity.ok(ApiResponse.success(items, "문항 일괄 조회 성공"));
     }
 
-//    @Operation(summary = "유사 문항 조회", description = "ES를 통한 유사 문항 검색")
-//    @PostMapping("/similar")
-//    public ResponseEntity<?> getSimilarItems(
-//            @RequestBody com.pullit.item.elastic.controller.ItemController.SimilarItemsRequest request
-//    ) throws IOException {
-//        // ES ItemController의 메서드를 그대로 호출
-//        return itemController.getSimilarItems(request);
-//    }
+    @Operation(summary = "스마트 랜덤 문항 선택",
+            description = "난이도 비율에 따른 지능형 문항 선택 (지문 그룹 처리 포함)")
+    @PostMapping("/smart-random")
+    public ResponseEntity<ApiResponse<SmartSelectionResponse>> smartRandomSelection(
+            @RequestBody @Valid SmartSelectionRequest request) {
 
+        log.info("스마트 문항 선택 요청 - 교과서: {}, 문항수: {}, 난이도: {}",
+                request.getSubjectId(), request.getItemCount(), request.getDifficulty());
+
+        SmartSelectionResponse response = itemSearchService.smartRandomSelection(request);
+
+        return ResponseEntity.ok(ApiResponse.success(response, "스마트 문항 선택 성공"));
+    }
 }
