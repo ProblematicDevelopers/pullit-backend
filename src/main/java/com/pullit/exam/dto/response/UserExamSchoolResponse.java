@@ -2,6 +2,8 @@ package com.pullit.exam.dto.response;
 
 import java.time.LocalDate;
 
+import com.pullit.user.dto.response.UserResponse;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,4 +30,5 @@ public class UserExamSchoolResponse {
     private LocalDate examDate;
     private String description;
     private Integer totalItems;
+    private UserResponse createdBy;
 }
