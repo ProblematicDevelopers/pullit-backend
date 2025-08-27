@@ -5,7 +5,7 @@ public interface StatsDetailProjection {
     String getExamName();
     Long getScore();
     Long getRankPosition();
-    Long getTotalStudent();
+    Long getTotalStudents();
     Long getPercentile();
     Long getQuartile();
     String getQuartileDescription();

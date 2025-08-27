@@ -15,7 +15,7 @@ public class StatsDetailResponse {
     private String examName;
     private Long score;
     private Long rankPosition;
-    private Long totalStudent;
+    private Long totalStudents;
     private Long percentile;
     private Long quartile;
     private String quartileDescription;
@@ -27,7 +27,7 @@ public class StatsDetailResponse {
                 .examName(statsDetailProjection.getExamName())
                 .score(statsDetailProjection.getScore())
                 .rankPosition(statsDetailProjection.getRankPosition())
-                .totalStudent(statsDetailProjection.getTotalStudent())
+                .totalStudents(statsDetailProjection.getTotalStudents())
                 .percentile(statsDetailProjection.getPercentile())
                 .quartile(statsDetailProjection.getQuartile())
                 .quartileDescription(statsDetailProjection.getQuartileDescription())
