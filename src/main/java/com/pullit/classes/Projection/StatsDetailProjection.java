@@ -10,4 +10,12 @@ public interface StatsDetailProjection {
     Long getQuartile();
     String getQuartileDescription();
     Double getTopPercentage();
+    Double getMedian();
+    Double getMean();
+    Long getMax();
+    Long getMin();
+    Double getStdDeviation();
+    Double getQ1();
+    Double getQ3();
+
 }
