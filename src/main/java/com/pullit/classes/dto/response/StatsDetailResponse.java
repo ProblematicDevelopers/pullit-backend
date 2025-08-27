@@ -20,6 +20,13 @@ public class StatsDetailResponse {
     private Long quartile;
     private String quartileDescription;
     private Double topPercentage;
+    private Double median;
+    private Double mean;
+    private Long max;
+    private Long min;
+    private Double stdDeviation;
+    private Double q1;
+    private Double q3;
 
     public static StatsDetailResponse from(StatsDetailProjection statsDetailProjection) {
         return StatsDetailResponse.builder()
@@ -32,6 +39,13 @@ public class StatsDetailResponse {
                 .quartile(statsDetailProjection.getQuartile())
                 .quartileDescription(statsDetailProjection.getQuartileDescription())
                 .topPercentage(statsDetailProjection.getTopPercentage())
+                .median(statsDetailProjection.getMedian())
+                .mean(statsDetailProjection.getMean())
+                .max(statsDetailProjection.getMax())
+                .min(statsDetailProjection.getMin())
+                .stdDeviation(statsDetailProjection.getStdDeviation())
+                .q1(statsDetailProjection.getQ1())
+                .q3(statsDetailProjection.getQ3())
                 .build();
     }
 }
