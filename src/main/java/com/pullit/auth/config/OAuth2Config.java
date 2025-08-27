@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,6 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class OAuth2Config {
 
     @Bean
+    @Order(1) // OAuth2 필터 체인이 먼저 실행되도록 설정
     public SecurityFilterChain oauth2FilterChain(HttpSecurity http) throws Exception {
         http
             .securityMatcher("/oauth2/**", "/api/auth/oauth2/**", "/login/oauth2/code/**")

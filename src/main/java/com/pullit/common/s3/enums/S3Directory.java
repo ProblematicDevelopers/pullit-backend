@@ -26,7 +26,8 @@ public enum S3Directory {
     DOCUMENT("documents/", "문서 파일"),
     
     // 임시 파일
-    TEMP("temp/", "임시 파일");
+    TEMP("temp/", "임시 파일"),
+    EXAM_PDF("exam-pdf/", "시험지 PDF");
 
     private final String path;
     private final String description;

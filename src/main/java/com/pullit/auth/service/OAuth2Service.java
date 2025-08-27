@@ -122,13 +122,18 @@ public class OAuth2Service {
             if (existingUser.isPresent()) {
                 // 기존 사용자: JWT 토큰 생성
                 User user = existingUser.get();
+                log.info("Generating JWT tokens for user: {}", user.getUsername());
                 String accessToken = jwtService.generateAccessToken(user);
                 String refreshToken = jwtService.generateRefreshToken(user);
+                
+                log.info("JWT tokens generated - Access Token: {}..., Refresh Token: {}...", 
+                    accessToken != null ? accessToken.substring(0, Math.min(20, accessToken.length())) : "null",
+                    refreshToken != null ? refreshToken.substring(0, Math.min(20, refreshToken.length())) : "null");
                 
                 // 마지막 로그인 시간 업데이트
                 userService.updateLastLogin(user.getId());
                 
-                return OAuth2LoginResult.builder()
+                OAuth2LoginResult result = OAuth2LoginResult.builder()
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
                         .user(com.pullit.user.dto.response.UserResponse.from(user))  // 사용자 정보 추가
@@ -138,6 +143,9 @@ public class OAuth2Service {
                         .name(name)
                         .username(username)
                         .build();
+                
+                log.info("OAuth2LoginResult built successfully for user: {}", user.getUsername());
+                return result;
             } else {
                 // 신규 사용자: 예외 발생 (소셜 정보 포함)
                 throw new SocialLoginNewUserException("신규 사용자입니다. 회원가입을 진행해주세요.", socialInfo);

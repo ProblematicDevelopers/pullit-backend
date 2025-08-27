@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class TeacherInfo {
     private String schoolName;
-    private String areaCode;
-    private String areaName;
+    private String areaCode;  // 과목 코드
+    private String areaName;  // 과목명
 
 }

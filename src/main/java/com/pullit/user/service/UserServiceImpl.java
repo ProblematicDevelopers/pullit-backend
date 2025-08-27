@@ -9,7 +9,10 @@ import com.pullit.user.dto.request.UserCreateRequest;
 import com.pullit.user.dto.request.UserUpdateRequest;
 import com.pullit.user.dto.response.UserResponse;
 import com.pullit.user.entity.User;
+import com.pullit.user.entity.UserRole;
 import com.pullit.user.repository.UserRepository;
+import com.pullit.teacher.service.TeacherService;
+import com.pullit.student.service.StudentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -29,6 +32,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final StudentService studentService;
 
     @Override
     @Cacheable(value = "users", key ="#id")
@@ -88,6 +92,10 @@ public class UserServiceImpl implements UserService {
 
         User savedUser = userRepository.save(user);
         log.info("새로운 회원 : {}", savedUser.getUsername());
+        
+        // AuthController에서 직접 Teacher/Student 서비스를 호출하므로 여기서는 User만 저장
+        // Teacher/Student 정보는 AuthController에서 처리
+        
         return UserResponse.from(savedUser);
     }
 

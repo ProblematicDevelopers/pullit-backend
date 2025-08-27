@@ -9,8 +9,10 @@ import com.pullit.auth.service.JwtService;
 import com.pullit.common.annotation.LoggingTrace;
 import com.pullit.common.annotation.RateLimited;
 import com.pullit.common.dto.response.ApiResponse;
+import com.pullit.teacher.service.TeacherService;
 import com.pullit.user.dto.request.UserCreateRequest;
 import com.pullit.user.dto.response.UserResponse;
+import com.pullit.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -36,6 +38,8 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtService jwtService;
+    private final UserService userService;
+    private final TeacherService teacherService;
 
     @PostMapping("/login")
     @Operation(
@@ -93,13 +97,14 @@ public class AuthController {
             )
     })
     @LoggingTrace
-    @RateLimited(limit = 3, duration = 1, timeUnit = TimeUnit.MINUTES)
+//    @RateLimited(limit = 3, duration = 1, timeUnit = TimeUnit.MINUTES)
     public ResponseEntity<ApiResponse<UserResponse>> register(
             @Valid @RequestBody UserCreateRequest request) {
 
         log.info("회원가입 요청: {}", request.getUsername());
 
-        UserResponse response = authService.register(request);
+        // 모든 작업을 AuthService에서 트랜잭션으로 처리
+        UserResponse response = authService.registerWithTeacher(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
