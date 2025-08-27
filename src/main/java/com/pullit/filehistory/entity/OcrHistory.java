@@ -27,9 +27,13 @@ public class OcrHistory {
     @JoinColumn(name = "item_id")
     private ItemMetadata itemMetadata;
 
+    @Column(name = "position_x")
     private String positionX;
+    @Column(name = "position_y")
     private String positionY;
+    @Column(name = "size_x")
     private String sizeX;
+    @Column(name = "size_y")
     private String sizeY;
 
 }
