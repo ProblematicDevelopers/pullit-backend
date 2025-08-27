@@ -7,12 +7,18 @@ import com.pullit.common.exception.ErrorCode;
 import com.pullit.user.dto.request.UserCreateRequest;
 import com.pullit.user.dto.response.UserResponse;
 import com.pullit.user.entity.User;
+import com.pullit.user.entity.UserRole;
 import com.pullit.user.service.UserService;
+import com.pullit.teacher.service.TeacherService;
+import com.pullit.student.service.StudentService;
+import com.pullit.user.dto.request.TeacherInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -23,6 +29,8 @@ public class AuthService {
     private final UserService userService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final TeacherService teacherService;
+    private final StudentService studentService;
 
 
     @Transactional
@@ -65,11 +73,79 @@ public class AuthService {
     public UserResponse register(UserCreateRequest request) {
         log.info("Registration attempt for username: {}", request.getUsername());
 
+        // Check if user already exists (from OAuth2 login)
+        Optional<User> existingUser = userService.findByUsername(request.getUsername());
+        
+        if (existingUser.isPresent()) {
+            log.info("User already exists from OAuth2 login: {}", request.getUsername());
+            User user = existingUser.get();
+            
+            // Update user role if needed
+            user.setRole(request.getUserRole());
+            
+            // Teacher/Student 정보는 AuthController에서 직접 처리
+            
+            return UserResponse.from(user);
+        } else {
+            // New user registration
+            UserResponse newUser = userService.createUser(request);
+            log.info("Registration successful for username: {}", request.getUsername());
+            return newUser;
+        }
+    }
 
-        UserResponse newUser = userService.createUser(request);
+    @Transactional(noRollbackFor = {RuntimeException.class})
+    public UserResponse registerWithTeacher(UserCreateRequest request) {
+        log.info("Registration with teacher info for username: {}", request.getUsername());
 
-        log.info("Registration successful for username: {}", request.getUsername());
-        return newUser;
+        // 1. Create user first (this will check for existing users)
+        UserResponse response = userService.createUser(request);
+        
+        // 2. If teacher role, create teacher record in separate transaction
+        if (request.getUserRole() == UserRole.TEACHER && request.getTeacherInfo() != null) {
+            try {
+                // Get the created user by ID (more reliable than username)
+                User savedUser = userService.getUserById(response.getId());
+                
+                // Create teacher record - this will be in separate transaction
+                createTeacherAsync(savedUser, request.getTeacherInfo());
+                log.info("Teacher record creation initiated for user: {}", savedUser.getUsername());
+            } catch (Exception e) {
+                log.error("Failed to initiate teacher record creation for user: {}, error: {}", 
+                         request.getUsername(), e.getMessage());
+                // Continue even if teacher creation fails
+            }
+        }
+        
+        // 3. If student role, create student record
+        if (request.getUserRole() == UserRole.STUDENT && request.getStudentInfo() != null) {
+            try {
+                User savedUser = userService.getUserById(response.getId());
+                
+                studentService.createStudent(savedUser, request.getStudentInfo());
+                log.info("Student record created for user: {}", savedUser.getUsername());
+            } catch (Exception e) {
+                log.error("Failed to create student record for user: {}, error: {}", 
+                         request.getUsername(), e.getMessage());
+            }
+        }
+        
+        return response;
+    }
+    
+    // Create teacher asynchronously to avoid transaction conflicts
+    private void createTeacherAsync(User user, TeacherInfo teacherInfo) {
+        // Run in separate thread to ensure separate transaction
+        new Thread(() -> {
+            try {
+                Thread.sleep(500); // Small delay to ensure user transaction completes
+                teacherService.createTeacher(user, teacherInfo);
+                log.info("Teacher record created successfully for user: {}", user.getUsername());
+            } catch (Exception e) {
+                log.error("Failed to create teacher record for user: {}, error: {}", 
+                         user.getUsername(), e.getMessage());
+            }
+        }).start();
     }
 
 

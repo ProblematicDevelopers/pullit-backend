@@ -33,13 +33,27 @@ public class RedisCacheConfig {
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+        // Jackson ObjectMapper with JavaTimeModule for LocalDateTime support
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());  // Add Java 8 Time support
+        objectMapper.activateDefaultTyping(
+                BasicPolymorphicTypeValidator.builder()
+                        .allowIfSubType(Object.class)
+                        .build(),
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY
+        );
+        
+        GenericJackson2JsonRedisSerializer serializer = 
+                new GenericJackson2JsonRedisSerializer(objectMapper);
+        
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofHours(1))
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer())
                 )
                 .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())
+                        RedisSerializationContext.SerializationPair.fromSerializer(serializer)
                 )
                 .disableCachingNullValues();
 

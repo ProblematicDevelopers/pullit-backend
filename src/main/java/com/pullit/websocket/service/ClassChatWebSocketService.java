@@ -47,8 +47,8 @@ public class ClassChatWebSocketService {
             throw new IllegalArgumentException("메시지 내용이 비어있습니다.");
         }
         
-        if (request.getClassId() == null) {
-            throw new IllegalArgumentException("클래스 ID가 필요합니다.");
+        if (request.getChannelName() == null) {
+            throw new IllegalArgumentException("채널 이름이 필요합니다.");
         }
         
         if (request.getSenderId() == null) {
@@ -77,7 +77,7 @@ public class ClassChatWebSocketService {
                 .messageId(messageId)
                 .messageType("MESSAGE")
                 .content(filteredContent)
-                .classId(request.getClassId())
+                .channelName(request.getChannelName())
                 .senderId(request.getSenderId())
                 .senderName(request.getSenderName())
                 .senderRole(request.getSenderRole())
@@ -91,7 +91,7 @@ public class ClassChatWebSocketService {
                 .messageId(messageId)
                 .messageType("JOIN")
                 .content(request.getSenderName() + "님이 입장하셨습니다.")
-                .classId(request.getClassId())
+                .channelName(request.getChannelName())
                 .senderId(request.getSenderId())
                 .senderName(request.getSenderName())
                 .senderRole(request.getSenderRole())
@@ -105,7 +105,7 @@ public class ClassChatWebSocketService {
                 .messageId(messageId)
                 .messageType("LEAVE")
                 .content(request.getSenderName() + "님이 퇴장하셨습니다.")
-                .classId(request.getClassId())
+                .channelName(request.getChannelName())
                 .senderId(request.getSenderId())
                 .senderName(request.getSenderName())
                 .senderRole(request.getSenderRole())
@@ -124,7 +124,7 @@ public class ClassChatWebSocketService {
                 .messageId(messageId)
                 .messageType("NOTICE")
                 .content("[공지] " + request.getContent())
-                .classId(request.getClassId())
+                .channelName(request.getChannelName())
                 .senderId(request.getSenderId())
                 .senderName(request.getSenderName())
                 .senderRole(request.getSenderRole())
@@ -148,17 +148,17 @@ public class ClassChatWebSocketService {
     }
 
     // 클래스별 활성 사용자 수 관리 (간단한 메모리 기반 구현)
-    public void addUserToClass(Long classId, Long userId) {
-        log.info("User {} joined class {}", userId, classId);
+    public void addUserToClass(String channelName, String userId) {
+        log.info("User {} joined class {}", userId, channelName);
         // TODO: Redis나 DB를 사용하여 실제 구현
     }
 
-    public void removeUserFromClass(Long classId, Long userId) {
-        log.info("User {} left class {}", userId, classId);
+    public void removeUserFromClass(String channelName, String userId) {
+        log.info("User {} left class {}", userId, channelName);
         // TODO: Redis나 DB를 사용하여 실제 구현
     }
 
-    public int getActiveUsersInClass(Long classId) {
+    public int getActiveUsersInClass(String channelName) {
         // TODO: Redis나 DB에서 실제 사용자 수 조회
         return 0;
     }

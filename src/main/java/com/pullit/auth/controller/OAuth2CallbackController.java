@@ -97,9 +97,9 @@ public class OAuth2CallbackController {
                     log.info("OAuth2 social info saved to session: {}", socialInfo);
                     log.info("Generated username from email: {} -> {}", email, username);
                     
-                                                    // 4. 프론트엔드로 리다이렉트 (신규 사용자로 가정)
-                                // 실제로는 여기서 사용자 존재 여부를 확인해야 함
-                                return "redirect:http://localhost:5173/oauth2/callback/naver";
+                    // 4. 사용자 존재 여부 확인 후 프론트엔드로 직접 리다이렉트
+                    // 이메일로 기존 사용자 확인 (여기서는 프론트엔드에서 처리하도록 위임)
+                    return "redirect:http://localhost:5173/oauth2/callback/naver?status=process";
                 } else {
                     log.warn("User info response is invalid: {}", userInfo);
                     return "redirect:http://localhost:5173/login?error=oauth2_userinfo_failed";
@@ -180,8 +180,8 @@ public class OAuth2CallbackController {
                         log.info("Kakao OAuth2 social info saved to session: {}", socialInfo);
                         log.info("Generated username from email: {} -> {}", email, username);
                         
-                        // 4. 백엔드 내부 OAuth2 처리로 리다이렉트 (네이버와 동일한 흐름)
-                        return "redirect:http://localhost:8080/api/auth/oauth2/success";
+                        // 4. 프론트엔드로 직접 리다이렉트 (네이버와 동일한 흐름)
+                        return "redirect:http://localhost:5173/oauth2/callback/kakao?status=process";
                     } else {
                         log.warn("Kakao account info not found");
                         return "redirect:http://localhost:5173/login?error=oauth2_userinfo_failed";

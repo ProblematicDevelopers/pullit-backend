@@ -34,8 +34,9 @@ public class ClassChatWebSocketHandler {
             // 메시지 저장 및 처리
             ChatMessageResponse response = chatService.processMessage(chatMessage);
             
-            // 클래스 전체에 메시지 브로드캐스트
-            messagingTemplate.convertAndSend("/topic/class/" + chatMessage.getClassId(), response);
+            // 채널 기반 메시지 브로드캐스트
+            String topicDestination = getTopicDestination(chatMessage);
+            messagingTemplate.convertAndSend(topicDestination, response);
             
         } catch (Exception e) {
             log.error("Error processing chat message", e);
@@ -46,7 +47,8 @@ public class ClassChatWebSocketHandler {
                     .timestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                     .build();
             
-            messagingTemplate.convertAndSend("/topic/class/" + chatMessage.getClassId(), errorResponse);
+            String topicDestination = getTopicDestination(chatMessage);
+            messagingTemplate.convertAndSend(topicDestination, errorResponse);
         }
     }
 
@@ -55,14 +57,23 @@ public class ClassChatWebSocketHandler {
                        SimpMessageHeaderAccessor headerAccessor) {
         log.info("User joining chat: {}", chatMessage.getSenderName());
         
+        // null 체크
+        if (chatMessage.getSenderId() == null || chatMessage.getChannelName() == null || 
+            chatMessage.getSenderName() == null || chatMessage.getSenderRole() == null) {
+            log.error("Invalid chat message data: senderId={}, channelName={}, senderName={}, senderRole={}", 
+                     chatMessage.getSenderId(), chatMessage.getChannelName(), 
+                     chatMessage.getSenderName(), chatMessage.getSenderRole());
+            return;
+        }
+        
         // WebSocket 세션에 사용자 정보 추가
         headerAccessor.getSessionAttributes().put("username", chatMessage.getSenderName());
         headerAccessor.getSessionAttributes().put("userId", chatMessage.getSenderId());
-        headerAccessor.getSessionAttributes().put("classId", chatMessage.getClassId());
+        headerAccessor.getSessionAttributes().put("channelName", chatMessage.getChannelName());
         
         // 접속 상태 업데이트
         OnlineStatusRequest onlineRequest = OnlineStatusRequest.builder()
-                .classId(chatMessage.getClassId())
+                .channelName(chatMessage.getChannelName())
                 .userId(chatMessage.getSenderId())
                 .userName(chatMessage.getSenderName())
                 .userRole(chatMessage.getSenderRole())
@@ -76,7 +87,7 @@ public class ClassChatWebSocketHandler {
         ChatMessageResponse joinMessage = ChatMessageResponse.builder()
                 .messageType("JOIN")
                 .content(chatMessage.getSenderName() + "님이 입장하셨습니다.")
-                .classId(chatMessage.getClassId())
+                .channelName(chatMessage.getChannelName())
                 .senderId(chatMessage.getSenderId())
                 .senderName(chatMessage.getSenderName())
                 .senderRole(chatMessage.getSenderRole())
@@ -84,25 +95,33 @@ public class ClassChatWebSocketHandler {
                 .status("SUCCESS")
                 .build();
         
-        // 클래스 전체에 입장 메시지 브로드캐스트
-        messagingTemplate.convertAndSend("/topic/class/" + chatMessage.getClassId(), joinMessage);
+        // 채널에 입장 메시지 브로드캐스트
+        String topicDestination = getTopicDestination(chatMessage);
+        messagingTemplate.convertAndSend(topicDestination, joinMessage);
         
         // 접속 상태 브로드캐스트
-        broadcastOnlineStatus(chatMessage.getClassId());
+        broadcastOnlineStatus(chatMessage.getChannelName());
     }
 
     @MessageMapping("/chat.leaveUser")
     public void leaveUser(@Payload ChatMessageRequest chatMessage) {
         log.info("User leaving chat: {}", chatMessage.getSenderName());
         
+        // null 체크
+        if (chatMessage.getSenderId() == null || chatMessage.getChannelName() == null) {
+            log.error("Invalid leave message data: senderId={}, channelName={}", 
+                     chatMessage.getSenderId(), chatMessage.getChannelName());
+            return;
+        }
+        
         // 접속 상태에서 제거
-        onlineStatusService.removeUserFromClass(chatMessage.getClassId(), chatMessage.getSenderId());
+        onlineStatusService.removeUserFromClass(chatMessage.getChannelName(), chatMessage.getSenderId());
         
         // 퇴장 메시지 생성
         ChatMessageResponse leaveMessage = ChatMessageResponse.builder()
                 .messageType("LEAVE")
                 .content(chatMessage.getSenderName() + "님이 퇴장하셨습니다.")
-                .classId(chatMessage.getClassId())
+                .channelName(chatMessage.getChannelName())
                 .senderId(chatMessage.getSenderId())
                 .senderName(chatMessage.getSenderName())
                 .senderRole(chatMessage.getSenderRole())
@@ -110,11 +129,12 @@ public class ClassChatWebSocketHandler {
                 .status("SUCCESS")
                 .build();
         
-        // 클래스 전체에 퇴장 메시지 브로드캐스트
-        messagingTemplate.convertAndSend("/topic/class/" + chatMessage.getClassId(), leaveMessage);
+        // 채널에 퇴장 메시지 브로드캐스트
+        String topicDestination = getTopicDestination(chatMessage);
+        messagingTemplate.convertAndSend(topicDestination, leaveMessage);
         
         // 접속 상태 브로드캐스트
-        broadcastOnlineStatus(chatMessage.getClassId());
+        broadcastOnlineStatus(chatMessage.getChannelName());
     }
 
     @MessageMapping("/chat.sendNotice")
@@ -130,7 +150,8 @@ public class ClassChatWebSocketHandler {
                     .timestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                     .build();
             
-            messagingTemplate.convertAndSend("/topic/class/" + chatMessage.getClassId(), errorResponse);
+            String topicDestination = getTopicDestination(chatMessage);
+            messagingTemplate.convertAndSend(topicDestination, errorResponse);
             return;
         }
         
@@ -138,7 +159,7 @@ public class ClassChatWebSocketHandler {
         ChatMessageResponse noticeMessage = ChatMessageResponse.builder()
                 .messageType("NOTICE")
                 .content("[공지] " + chatMessage.getContent())
-                .classId(chatMessage.getClassId())
+                .channelName(chatMessage.getChannelName())
                 .senderId(chatMessage.getSenderId())
                 .senderName(chatMessage.getSenderName())
                 .senderRole(chatMessage.getSenderRole())
@@ -146,8 +167,9 @@ public class ClassChatWebSocketHandler {
                 .status("SUCCESS")
                 .build();
         
-        // 클래스 전체에 공지사항 브로드캐스트
-        messagingTemplate.convertAndSend("/topic/class/" + chatMessage.getClassId(), noticeMessage);
+        // 채널에 공지사항 브로드캐스트
+        String topicDestination = getTopicDestination(chatMessage);
+        messagingTemplate.convertAndSend(topicDestination, noticeMessage);
     }
 
     // 접속 상태 업데이트
@@ -155,12 +177,19 @@ public class ClassChatWebSocketHandler {
     public void updateOnlineStatus(@Payload OnlineStatusRequest request) {
         log.info("Updating online status: {}", request);
         
+        // null 체크
+        if (request == null || request.getChannelName() == null) {
+            log.error("Invalid online status request: request={}, classId={}", 
+                     request, request != null ? request.getChannelName() : null);
+            return;
+        }
+        
         try {
             // 접속 상태 업데이트
             onlineStatusService.updateUserStatus(request);
             
             // 클래스 전체에 접속 상태 브로드캐스트
-            broadcastOnlineStatus(request.getClassId());
+            broadcastOnlineStatus(request.getChannelName());
             
         } catch (Exception e) {
             log.error("Error updating online status", e);
@@ -170,15 +199,30 @@ public class ClassChatWebSocketHandler {
     // 접속 상태 조회
     @MessageMapping("/online.getStatus")
     public void getOnlineStatus(@Payload OnlineStatusRequest request) {
-        log.info("Getting online status for class: {}", request.getClassId());
+        log.info("Getting online status for class: {}", request.getChannelName());
+        
+        // null 체크
+        if (request == null || request.getChannelName() == null || request.getUserId() == null) {
+            log.error("Invalid online status request: request={}, channelName={}, userId={}", 
+                     request, request != null ? request.getChannelName() : null, 
+                     request != null ? request.getUserId() : null);
+            return;
+        }
         
         try {
-            OnlineStatusResponse response = onlineStatusService.getClassOnlineStatus(request.getClassId());
+            String channelName = request.getChannelName();
+            Long userId = request.getUserId();
             
-            // 요청한 사용자에게만 응답
-            messagingTemplate.convertAndSendToUser(
-                request.getUserId().toString(),
-                "/queue/online/status",
+            if (channelName == null || userId == null) {
+                log.error("Null values detected in try block: channelName={}, userId={}", channelName, userId);
+                return;
+            }
+            
+            OnlineStatusResponse response = onlineStatusService.getClassOnlineStatus(channelName);
+            
+            // ✅ 채널 전체에 브로드캐스트 (모든 사용자가 동일한 정보를 받음)
+            messagingTemplate.convertAndSend(
+                "/topic/" + channelName + "/online",
                 response
             );
             
@@ -187,11 +231,22 @@ public class ClassChatWebSocketHandler {
         }
     }
 
+    // 채널 기반 토픽 목적지 생성 (내부 메서드)
+    private String getTopicDestination(ChatMessageRequest chatMessage) {
+        return "/topic/" + chatMessage.getChannelName();
+    }
+
     // 접속 상태 브로드캐스트 (내부 메서드)
-    private void broadcastOnlineStatus(Long classId) {
+    private void broadcastOnlineStatus(String channelName) {
+        // null 체크
+        if (channelName == null) {
+            log.error("ChannelName is null for broadcastOnlineStatus");
+            return;
+        }
+        
         try {
-            OnlineStatusResponse response = onlineStatusService.getClassOnlineStatus(classId);
-            messagingTemplate.convertAndSend("/topic/class/" + classId + "/online", response);
+            OnlineStatusResponse response = onlineStatusService.getClassOnlineStatus(channelName);
+            messagingTemplate.convertAndSend("/topic/" + channelName + "/online", response);
         } catch (Exception e) {
             log.error("Error broadcasting online status", e);
         }

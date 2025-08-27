@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -48,11 +49,22 @@ public class OAuth2Controller {
             description = "OAuth2 로그인 성공 후 처리합니다."
     )
     public ResponseEntity<ApiResponse<Object>> handleOAuth2Success(HttpServletRequest request) {
-        log.info("OAuth2 login success");
+        log.info("OAuth2 login success endpoint called");
+        
+        // 세션 ID 로그
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            log.info("Session ID: {}", session.getId());
+            log.info("Session attributes: {}", session.getAttributeNames());
+        } else {
+            log.warn("No session found!");
+        }
         
         try {
             // 세션에서 소셜 정보 가져오기 (네이버, 카카오 모두 동일하게 처리)
-            HttpSession session = request.getSession();
+            if (session == null) {
+                session = request.getSession();
+            }
             @SuppressWarnings("unchecked")
             Map<String, Object> socialInfo = (Map<String, Object>) session.getAttribute("oauth2_social_info");
             
@@ -64,21 +76,29 @@ public class OAuth2Controller {
             
             log.info("OAuth2 social info from session: {}", socialInfo);
             
+            String provider = (String) socialInfo.get("provider");
+            
             // OAuth2 서비스로 로그인 처리
             try {
                 OAuth2LoginResult result = oAuth2Service.handleOAuth2LoginSuccess(socialInfo);
+                log.info("OAuth2 login processing successful, returning result");
+                
+                // JSON 응답 반환
                 return ResponseEntity.ok(
                         ApiResponse.success(result, "LOGIN_SUCCESS")
                 );
             } catch (SocialLoginNewUserException e) {
                 // 신규 사용자: 소셜 정보 반환
                 log.info("New OAuth2 user: {}", socialInfo);
+                
+                // JSON 응답 반환
                 return ResponseEntity.ok(
                         ApiResponse.success(socialInfo, "NEW_USER")
                 );
             }
         } catch (Exception e) {
             log.error("OAuth2 success processing failed", e);
+            
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("OAUTH2_ERROR", "OAuth2 로그인 처리 실패: " + e.getMessage()));
         }

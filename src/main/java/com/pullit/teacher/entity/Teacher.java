@@ -3,6 +3,7 @@ package com.pullit.teacher.entity;
 import com.pullit.common.embedded.StringCodeNamePair;
 import com.pullit.common.entity.BaseTimeEntity;
 import com.pullit.user.entity.User;
+import com.pullit.classes.entity.School;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,15 +24,16 @@ public class Teacher extends BaseTimeEntity {
     @JoinColumn(name="user_id")
     private User user;
 
-    @Column(name="school_name")
-    private Long schoolId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="school_id")
+    private School school;
 
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "code", column = @Column(name = "area_code", length = 10)),
             @AttributeOverride(name = "name", column = @Column(name = "area_name", length = 50))
     })
-    private StringCodeNamePair area;
+    private StringCodeNamePair area;  // 과목 정보 (코드/이름)
 
 
     public String getAreaDisplayName() {

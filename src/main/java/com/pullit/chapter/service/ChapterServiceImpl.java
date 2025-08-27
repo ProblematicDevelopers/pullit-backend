@@ -1,6 +1,7 @@
 package com.pullit.chapter.service;
 
 import com.pullit.chapter.dto.response.*;
+import com.pullit.common.annotation.RedisCacheable;
 import com.pullit.chapter.repository.ChapterRepository;
 import com.pullit.chapter.entity.Chapter;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,11 @@ public class ChapterServiceImpl implements ChapterService {
     }
 
     @Override
+    @RedisCacheable(
+        key = "'chapter:all'",
+        ttl = 120,  // 2시간 TTL (챕터 정보는 거의 변경 안됨)
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES
+    )
     public List<ChapterResponse> findAllChapterOnly() {
         return chapterRepository.findAll().stream()
                 .map(ChapterResponse::from)
@@ -29,7 +35,12 @@ public class ChapterServiceImpl implements ChapterService {
     }
 
     @Override
-
+    @RedisCacheable(
+        key = "'chapter:bySubject:' + #subjectId",
+        ttl = 120,  // 2시간 TTL
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#subjectId != null"
+    )
     public List<ChapterResponse> findBySubjectId(Long subjectId) {
         return chapterRepository.findBySubject_SubjectId(subjectId).stream()
                 .map(ChapterResponse::from)
@@ -37,6 +48,12 @@ public class ChapterServiceImpl implements ChapterService {
     }
 
     @Override
+    @RedisCacheable(
+        key = "'chapter:tree:' + #subjectId",
+        ttl = 120,  // 2시간 TTL (트리 구조는 거의 변경 안됨)
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#subjectId != null"
+    )
     public List<LargeNode> findTreeBySubjectId(Long subjectId) {
         List<Chapter> rows = chapterRepository.findBySubject_SubjectIdOrderByLargeChapter_CodeAscMediumChapter_CodeAscSmallChapter_CodeAscTopicChapter_CodeAsc(subjectId);
         // 중/소는 (부모-자식 연결을 위해) 맵만 보조적으로 씁니다.

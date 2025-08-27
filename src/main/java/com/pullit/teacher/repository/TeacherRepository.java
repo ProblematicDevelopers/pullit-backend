@@ -29,4 +29,7 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
     // User 정보와 함께 Teacher 조회
     @Query("SELECT t FROM Teacher t JOIN FETCH t.user WHERE t.userId = :userId")
     Optional<Teacher> findByUserIdWithUser(@Param("userId") Long userId);
+    
+    // 존재 여부 확인
+    boolean existsByUserId(Long userId);
 }

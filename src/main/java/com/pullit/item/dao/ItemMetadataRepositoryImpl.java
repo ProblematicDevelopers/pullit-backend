@@ -288,4 +288,138 @@ public class ItemMetadataRepositoryImpl implements ItemMetadataRepositoryCustom 
                     r -> (Long) r[1]
                 ));
     }
+
+    @Override
+    public List<ItemMetadata> findRandomItemsWithPassageGrouping(Long subjectId, List<Long> chapterIds, Long difficultyCode, int limit, boolean independentOnly) {
+        String jpql;
+        if (independentOnly) {
+            // 독립 문항만 선택 (passageId가 null인 경우)
+            jpql = "SELECT i FROM ItemMetadata i " +
+                    "WHERE i.subject.subjectId = :subjectId " +
+                    "AND (" +
+                    "  i.chapterHierarchy.largeChapter.code IN :chapterIds " +
+                    "  OR i.chapterHierarchy.mediumChapter.code IN :chapterIds " +
+                    "  OR i.chapterHierarchy.smallChapter.code IN :chapterIds " +
+                    "  OR i.chapterHierarchy.topicChapter.code IN :chapterIds" +
+                    ") " +
+                    "AND i.difficulty.code = :difficultyCode " +
+                    "AND i.passageId IS NULL " +
+                    "ORDER BY FUNCTION('RAND')";
+        } else {
+            // 지문 그룹 선택 (각 지문에서 대표 문항 하나씩만 선택)
+            jpql = "SELECT i FROM ItemMetadata i " +
+                    "WHERE i.subject.subjectId = :subjectId " +
+                    "AND i.itemId IN (" +
+                    "  SELECT MIN(i2.itemId) FROM ItemMetadata i2 " +
+                    "  WHERE i2.subject.subjectId = :subjectId " +
+                    "  AND (" +
+                    "    i2.chapterHierarchy.largeChapter.code IN :chapterIds " +
+                    "    OR i2.chapterHierarchy.mediumChapter.code IN :chapterIds " +
+                    "    OR i2.chapterHierarchy.smallChapter.code IN :chapterIds " +
+                    "    OR i2.chapterHierarchy.topicChapter.code IN :chapterIds" +
+                    "  ) " +
+                    "  AND i2.difficulty.code = :difficultyCode " +
+                    "  AND i2.passageId IS NOT NULL " +
+                    "  GROUP BY i2.passageId" +
+                    ") " +
+                    "ORDER BY FUNCTION('RAND')";
+        }
+
+        return entityManager.createQuery(jpql, ItemMetadata.class)
+                .setParameter("subjectId", subjectId)
+                .setParameter("chapterIds", chapterIds)
+                .setParameter("difficultyCode", difficultyCode)
+                .setMaxResults(limit)
+                .getResultList();
+    }
+
+    @Override
+    public Map<String, Long> countSelectionUnitsByDifficulty(Long subjectId, List<Long> chapterIds, Long difficultyCode) {
+        Map<String, Long> result = new HashMap<>();
+
+        // 독립 문항 수
+        String independentSql = "SELECT COUNT(i) FROM ItemMetadata i " +
+                "WHERE i.subject.subjectId = :subjectId " +
+                "AND (" +
+                "  i.chapterHierarchy.largeChapter.code IN :chapterIds " +
+                "  OR i.chapterHierarchy.mediumChapter.code IN :chapterIds " +
+                "  OR i.chapterHierarchy.smallChapter.code IN :chapterIds " +
+                "  OR i.chapterHierarchy.topicChapter.code IN :chapterIds" +
+                ") " +
+                "AND i.difficulty.code = :difficultyCode " +
+                "AND i.passageId IS NULL";
+
+        Long independentCount = entityManager.createQuery(independentSql, Long.class)
+                .setParameter("subjectId", subjectId)
+                .setParameter("chapterIds", chapterIds)
+                .setParameter("difficultyCode", difficultyCode)
+                .getSingleResult();
+
+        // 지문 그룹 수
+        String passageGroupSql = "SELECT COUNT(DISTINCT i.passageId) FROM ItemMetadata i " +
+                "WHERE i.subject.subjectId = :subjectId " +
+                "AND (" +
+                "  i.chapterHierarchy.largeChapter.code IN :chapterIds " +
+                "  OR i.chapterHierarchy.mediumChapter.code IN :chapterIds " +
+                "  OR i.chapterHierarchy.smallChapter.code IN :chapterIds " +
+                "  OR i.chapterHierarchy.topicChapter.code IN :chapterIds" +
+                ") " +
+                "AND i.difficulty.code = :difficultyCode " +
+                "AND i.passageId IS NOT NULL";
+
+        Long passageGroupCount = entityManager.createQuery(passageGroupSql, Long.class)
+                .setParameter("subjectId", subjectId)
+                .setParameter("chapterIds", chapterIds)
+                .setParameter("difficultyCode", difficultyCode)
+                .getSingleResult();
+
+        result.put("independent", independentCount);
+        result.put("passageGroup", passageGroupCount);
+        result.put("total", independentCount + passageGroupCount);
+
+        return result;    }
+
+    @Override
+    public List<ItemMetadata> findItemsByPassageIds(Long subjectId, List<Long> passageIds) {
+        if (passageIds == null || passageIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        String jpql = "SELECT i FROM ItemMetadata i " +
+                "WHERE i.subject.subjectId = :subjectId " +
+                "AND i.passageId IN :passageIds " +
+                "ORDER BY i.passageId, i.itemId";
+
+        return entityManager.createQuery(jpql, ItemMetadata.class)
+                .setParameter("subjectId", subjectId)
+                .setParameter("passageIds", passageIds)
+                .getResultList();
+    }
+
+    @Override
+    public Map<Long, Long> getPassageRepresentativeDifficulty(Long subjectId, List<Long> chapterIds) {
+        // 각 지문의 대표 난이도 (첫 번째 문항의 난이도 사용)
+        String jpql = "SELECT i.passageId, MIN(i.difficulty.code) " +
+                "FROM ItemMetadata i " +
+                "WHERE i.subject.subjectId = :subjectId " +
+                "AND (" +
+                "  i.chapterHierarchy.largeChapter.code IN :chapterIds " +
+                "  OR i.chapterHierarchy.mediumChapter.code IN :chapterIds " +
+                "  OR i.chapterHierarchy.smallChapter.code IN :chapterIds " +
+                "  OR i.chapterHierarchy.topicChapter.code IN :chapterIds" +
+                ") " +
+                "AND i.passageId IS NOT NULL " +
+                "GROUP BY i.passageId";
+
+        List<Object[]> results = entityManager.createQuery(jpql, Object[].class)
+                .setParameter("subjectId", subjectId)
+                .setParameter("chapterIds", chapterIds)
+                .getResultList();
+
+        return results.stream()
+                .collect(Collectors.toMap(
+                        r -> (Long) r[0],
+                        r -> (Long) r[1]
+                ));
+    }
 }

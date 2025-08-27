@@ -5,10 +5,17 @@ import com.pullit.classes.dto.response.StudentInfoResponse;
 import com.pullit.classes.dto.response.TeacherInfoResponse;
 import com.pullit.classes.entity.Classes;
 import com.pullit.classes.repository.ClassRepository;
+import com.pullit.exam.dto.response.UserExamSchoolResponse;
+import com.pullit.exam.entity.UserExam;
+import com.pullit.exam.enums.ExamVisibility;
+import com.pullit.exam.repository.UserExamRepository;
 import com.pullit.student.entity.Student;
 import com.pullit.student.repository.StudentRepository;
 import com.pullit.teacher.entity.Teacher;
 import com.pullit.teacher.repository.TeacherRepository;
+import com.pullit.user.dto.response.UserResponse;
+import com.pullit.user.entity.User;
+import com.pullit.user.repository.UserRepository;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,6 +38,8 @@ public class ClassesServiceImpl implements ClassesService {
     private final ClassRepository classRepository;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
+    private final UserExamRepository userExamRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Operation(summary = "클래스 ID로 특정 클래스의 상세 정보를 조회", description = "클래스 ID로 특정 클래스의 상세 정보를 조회")
@@ -41,6 +51,69 @@ public class ClassesServiceImpl implements ClassesService {
                 .orElseThrow(() -> new RuntimeException("클래스를 찾을 수 없습니다. ID: " + classId));
         
         return convertToClassDetailResponse(classEntity);
+    }
+
+    @Override
+    public List<UserExamSchoolResponse> getExamsByClassId(Long classId) {
+        List<UserExam> exams = userExamRepository.findByClassIdAndVisibilityAndExamDateGreaterThanEqualOrderByExamDateAsc(classId, ExamVisibility.SCHOOL, LocalDate.now());
+        return exams.stream()
+                .map(e -> {
+                    // 생성자 정보 조회
+                    User creator = userRepository.findById(e.getCreatedBy())
+                            .orElseThrow(() -> new RuntimeException("시험 생성자를 찾을 수 없습니다. ID: " + e.getCreatedBy()));
+                    UserResponse creatorResponse = UserResponse.from(creator);
+                    
+                    return UserExamSchoolResponse.builder()
+                            .id(e.getId())
+                            .examName(e.getExamName())
+                            .gradeCode(e.getGradeCode())
+                            .gradeName(e.getGradeName())
+                            .termCode(e.getTermCode())
+                            .termName(e.getTermName())
+                            .areaCode(e.getAreaCode())
+                            .areaName(e.getAreaName())
+                            .examType(e.getExamType())
+                            .visibility(e.getVisibility().name())
+                            .pdfUrl(e.getPdfUrl())
+                            .answerPdfUrl(e.getAnswerPdfUrl())
+                            .timeLimit(e.getTimeLimit())
+                            .examDate(e.getExamDate())
+                            .description(e.getDescription())
+                            .totalItems(e.getTotalItems())
+                            .createdBy(creatorResponse)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public UserExamSchoolResponse getExamsByClassIdAndExamId(Long classId, Long examId) {
+        UserExam exam = userExamRepository.findByIdAndClassId(examId, classId);
+        
+        // 생성자 정보 조회
+        User creator = userRepository.findById(exam.getCreatedBy())
+                .orElseThrow(() -> new RuntimeException("시험 생성자를 찾을 수 없습니다. ID: " + exam.getCreatedBy()));
+        UserResponse creatorResponse = UserResponse.from(creator);
+        
+        return UserExamSchoolResponse.builder()
+                .id(exam.getId())
+                .examName(exam.getExamName())
+                .gradeCode(exam.getGradeCode())
+                .gradeName(exam.getGradeName())
+                .termCode(exam.getTermCode())
+                .termName(exam.getTermName())
+                .areaCode(exam.getAreaCode())
+                .areaName(exam.getAreaName())
+                .examType(exam.getExamType())
+                .visibility(exam.getVisibility().name())
+                .pdfUrl(exam.getPdfUrl())
+                .answerPdfUrl(exam.getAnswerPdfUrl())
+                .timeLimit(exam.getTimeLimit())
+                .examDate(exam.getExamDate())
+                .description(exam.getDescription())
+                .totalItems(exam.getTotalItems())
+                .createdBy(creatorResponse)
+                .build();
     }
 
     private ClassDetailResponse convertToClassDetailResponse(Classes classEntity) {

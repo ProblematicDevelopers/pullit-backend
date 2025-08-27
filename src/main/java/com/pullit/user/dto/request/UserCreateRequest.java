@@ -45,8 +45,8 @@ public class UserCreateRequest {
     @Schema(description = "선생님 설명")
     private TeacherInfo teacherInfo;
 
-//    @Schema(description = "학생 설명")
-//    private StudentInfo studentInfo;
+    @Schema(description = "학생 설명")
+    private StudentInfo studentInfo;
 
     @Schema(description = "소셜 로그인 제공자", example = "google")
     private String socialProvider;

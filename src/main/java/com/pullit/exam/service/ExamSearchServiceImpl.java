@@ -1,6 +1,8 @@
 package com.pullit.exam.service;
 
 import com.pullit.common.annotation.LoggingTrace;
+import com.pullit.common.annotation.RedisCacheable;
+import com.pullit.common.annotation.RedisCacheEvict;
 import com.pullit.exam.dto.request.ExamSearchRequest;
 import com.pullit.exam.dto.response.ExamCountBySubjectResponse;
 import com.pullit.exam.dto.response.ExamWithItemsResponse;
@@ -12,7 +14,7 @@ import com.pullit.exam.repository.ExamSearchRepository;
 import com.pullit.item.entity.Subject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
+// import org.springframework.cache.annotation.Cacheable; // Spring Cache 대신 RedisCacheable 사용
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -42,6 +44,18 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * - 다양한 필터 조건 적용
      */
     @Override
+    @RedisCacheable(
+        key = "'exam:search:' + " +
+              "(#request.keyword != null ? #request.keyword : 'none') + ':' + " +
+              "(#request.gradeCode != null ? #request.gradeCode : 'all') + ':' + " +
+              "(#request.areaCode != null ? #request.areaCode : 'all') + ':' + " +
+              "(#request.termCode != null ? #request.termCode : 'all') + ':' + " +
+              "(#request.subjectId != null ? #request.subjectId : 'all') + ':' + " +
+              "(#request.visibility != null ? #request.visibility : 'all') + ':' + " +
+              "'page:' + #pageable.getPageNumber() + ':size:' + #pageable.getPageSize()",
+        ttl = 30,  // 30분 TTL (검색 결과는 적당한 시간 캐싱)
+        condition = "#request != null"
+    )
     public Page<UnifiedExamResponse> searchExams(ExamSearchRequest request, Pageable pageable) {
         log.debug("통합 시험 검색 시작: {}", request);
 
@@ -60,7 +74,11 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * - 캐싱으로 응답 속도 향상
      */
     @Override
-    // @Cacheable(value = "examQuickSearch", key = "#keyword + ':' + #limit") // 캐시 비활성화 - 성능 측정
+    @RedisCacheable(
+        key = "'exam:quickSearch:' + #keyword + ':' + #limit",
+        ttl = 10,  // 10분 TTL (자동완성은 짧게)
+        condition = "#keyword != null && #keyword.length() >= 2"
+    )
     @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true, logParameters = true)
     public List<UnifiedExamResponse> quickSearch(String keyword, int limit) {
         log.info("[인덱스 없음] 빠른 검색 시작: keyword={}, limit={}", keyword, limit);
@@ -98,7 +116,11 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * - 캐싱으로 자주 조회되는 데이터 최적화
      */
     @Override
-    // @Cacheable(value = "recentExams", key = "#limit") // 캐시 비활성화 - 성능 측정
+    @RedisCacheable(
+        key = "'exam:recent:' + #limit",
+        ttl = 30,  // 30분 TTL (최근 시험은 자주 변경)
+        condition = "#limit > 0 && #limit <= 50"
+    )
     @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public List<UnifiedExamResponse> getRecentExams(int limit) {
         log.info("[인덱스 없음] 최근 시험 조회: limit={}", limit);
@@ -134,6 +156,11 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * - UserExam은 chapter 정보 없음
      */
     @Override
+    @RedisCacheable(
+        key = "'exam:byChapter:' + #largeChapterCode + ':' + #pageable.pageNumber + ':' + #pageable.pageSize",
+        ttl = 30,  // 30분 TTL
+        condition = "#largeChapterCode != null"
+    )
     public Page<UnifiedExamResponse> searchByChapter(Long largeChapterCode, Pageable pageable) {
         log.debug("대단원별 검색: chapterCode={}", largeChapterCode);
 
@@ -148,7 +175,11 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * 과목별 시험 개수 통계
      */
     @Override
-    @Cacheable(value = "examCountBySubject", key = "#subjectId")
+    @RedisCacheable(
+        key = "'exam:countBySubject:' + (#subjectId != null ? #subjectId : 'all')",
+        ttl = 60,  // 1시간 TTL (통계는 자주 변경되지 않음)
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES
+    )
     public List<ExamCountBySubjectResponse> getExamCountBySubject(Long subjectId) {
         log.debug("과목별 시험 개수 조회: subjectId={}", subjectId);
 
@@ -249,7 +280,11 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * - 실제 데이터베이스에서 학년, 과목, 학기, 교과서 옵션을 조회
      */
     @Override
-    // @Cacheable("filterOptions") // 캐시 비활성화 - 성능 측정
+    @RedisCacheable(
+        key = "'exam:filterOptions'",
+        ttl = 120,  // 2시간 TTL (필터 옵션은 거의 변경 안됨)
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES
+    )
     @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     @SuppressWarnings("unchecked")
     public Map<String, Object> getFilterOptions() {
@@ -388,7 +423,12 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * @return 문항 ID 목록
      */
     @Override
-    // @Cacheable(value = "examItemIds", key = "#examId", condition = "#examId != null") // 캐시 비활성화 - 성능 측정
+    @RedisCacheable(
+        key = "'exam:itemIds:' + #examId",
+        ttl = 60,  // 1시간 TTL
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#examId != null"
+    )
     @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true)
     public List<Long> getExamItemIds(Long examId) {
         log.info("[인덱스 없음] 시험지 문항 ID 조회: examId={}", examId);
@@ -428,6 +468,12 @@ public class ExamSearchServiceImpl implements ExamSearchService {
      * @return 시험지와 문항 정보
      */
     @Override
+    @RedisCacheable(
+        key = "'exam:withItems:' + #examId",
+        ttl = 60,  // 1시간 TTL  
+        timeUnit = java.util.concurrent.TimeUnit.MINUTES,
+        condition = "#examId != null"
+    )
     @Transactional(readOnly = true)
     public ExamWithItemsResponse getExamWithItems(Long examId) {
         log.debug("시험지 문항 정보 조회 시작: examId={}", examId);

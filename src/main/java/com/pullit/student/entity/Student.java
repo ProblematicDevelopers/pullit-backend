@@ -1,6 +1,7 @@
 package com.pullit.student.entity;
 
 import com.pullit.common.entity.BaseTimeEntity;
+import com.pullit.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,17 +16,20 @@ import lombok.*;
 public class Student extends BaseTimeEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id",nullable = false)
     private Long userId;
 
-    @Column(name="class_group_id",nullable = false)
+    @OneToOne
+    @MapsId
+    @JoinColumn(name="user_id")
+    private User user;
+
+    @Column(name="class_group_id")
     private Long classGroupID;
 
-    @Column(name = "student_no", nullable = false)
+    @Column(name = "student_no")
     private Long studentNo;
 
-    @Column(nullable = false)
+    @Column
     private Long grade;
 
 
