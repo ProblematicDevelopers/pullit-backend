@@ -34,7 +34,6 @@ public class SecurityConfig {
     private final JwtAuthenticationConverter jwtAuthenticationConverter;
 
     @Bean
-    @Order(2) // 메인 필터 체인은 OAuth2 필터 체인 다음에 실행
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -49,6 +48,9 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // 테스트용 엔드포인트 허용
                         .requestMatchers("/api/test/**").permitAll()
+                        // OAuth2 관련 엔드포인트 허용
+                        .requestMatchers("/api/auth/oauth2/**").permitAll()
+                        .requestMatchers("/api/oauth2/**").permitAll()
                         // 사용자 정보 조회 (개발 환경 테스트용)
                         .requestMatchers("/api/users/me").permitAll()
                         .requestMatchers("/api/users/check/**").permitAll()  // 중복 체크도 허용
