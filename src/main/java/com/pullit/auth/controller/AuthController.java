@@ -245,4 +245,54 @@ public class AuthController {
                 ApiResponse.successWithoutData("로그아웃 성공")
         );
     }
+    
+    @GetMapping("/oauth2/authorization/{provider}")
+    @Operation(
+            summary = "OAuth2 로그인 URL 생성",
+            description = "OAuth2 제공자(네이버, 카카오 등)의 로그인 URL을 반환합니다."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "OAuth2 로그인 URL 생성 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "지원하지 않는 OAuth2 제공자"
+            )
+    })
+    @LoggingTrace
+    public ResponseEntity<ApiResponse<String>> getOAuth2AuthorizationUrl(
+            @PathVariable String provider) {
+        
+        log.info("OAuth2 로그인 URL 요청: provider={}", provider);
+        
+        // OAuth2 로그인 URL 생성 로직
+        String authorizationUrl = authService.generateOAuth2AuthorizationUrl(provider);
+        
+        return ResponseEntity.ok(
+                ApiResponse.success(authorizationUrl, "OAuth2 로그인 URL 생성 성공")
+        );
+    }
+    
+    @GetMapping("/oauth2/callback/{provider}")
+    @Operation(
+            summary = "OAuth2 콜백 처리",
+            description = "OAuth2 제공자로부터 콜백을 받아 처리합니다."
+    )
+    @LoggingTrace
+    public ResponseEntity<ApiResponse<LoginResponse>> handleOAuth2Callback(
+            @PathVariable String provider,
+            @RequestParam String code,
+            @RequestParam(required = false) String state) {
+        
+        log.info("OAuth2 콜백 처리: provider={}, code={}, state={}", provider, code, state);
+        
+        // OAuth2 인증 처리 및 JWT 토큰 발급
+        LoginResponse response = authService.processOAuth2Callback(provider, code, state);
+        
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "OAuth2 로그인 성공")
+        );
+    }
 }

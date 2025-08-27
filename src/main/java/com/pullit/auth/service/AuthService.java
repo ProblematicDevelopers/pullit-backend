@@ -284,4 +284,66 @@ public class AuthService {
     private String generateRandomPassword() {
         return "SOCIAL_" + System.currentTimeMillis();
     }
+    
+    /**
+     * OAuth2 인증 URL 생성
+     * @param provider OAuth2 제공자 (naver, kakao, google 등)
+     * @return 인증 URL
+     */
+    public String generateOAuth2AuthorizationUrl(String provider) {
+        log.info("Generating OAuth2 authorization URL for provider: {}", provider);
+        
+        // 실제로는 OAuth2 설정에서 URL을 생성해야 하지만,
+        // 임시로 직접 URL을 반환
+        switch (provider.toLowerCase()) {
+            case "naver":
+                // Naver OAuth2 URL 생성 로직
+                return "https://nid.naver.com/oauth2.0/authorize?" +
+                       "response_type=code&" +
+                       "client_id=YOUR_CLIENT_ID&" +
+                       "redirect_uri=http://localhost:8080/api/auth/oauth2/callback/naver&" +
+                       "state=" + generateState();
+            case "kakao":
+                return "https://kauth.kakao.com/oauth/authorize?" +
+                       "response_type=code&" +
+                       "client_id=YOUR_CLIENT_ID&" +
+                       "redirect_uri=http://localhost:8080/api/auth/oauth2/callback/kakao";
+            case "google":
+                return "https://accounts.google.com/o/oauth2/v2/auth?" +
+                       "response_type=code&" +
+                       "client_id=YOUR_CLIENT_ID&" +
+                       "redirect_uri=http://localhost:8080/api/auth/oauth2/callback/google&" +
+                       "scope=email profile";
+            default:
+                throw new BusinessException(ErrorCode.INVALID_INPUT, 
+                    "Unsupported OAuth2 provider: " + provider);
+        }
+    }
+    
+    /**
+     * OAuth2 콜백 처리
+     * @param provider OAuth2 제공자
+     * @param code 인증 코드
+     * @param state CSRF 방지용 state
+     * @return LoginResponse
+     */
+    @Transactional
+    public LoginResponse processOAuth2Callback(String provider, String code, String state) {
+        log.info("Processing OAuth2 callback for provider: {}", provider);
+        
+        // TODO: 실제 OAuth2 토큰 교환 및 사용자 정보 조회 로직 구현
+        // 현재는 임시로 테스트 데이터 사용
+        
+        // 임시 데이터 (실제로는 OAuth2 API를 통해 가져와야 함)
+        String providerId = "test_" + System.currentTimeMillis();
+        String email = "oauth2_" + provider + "@test.com";
+        String name = "OAuth2 User";
+        
+        // socialLogin 메서드를 사용하여 로그인 처리
+        return socialLogin(provider, providerId, email, name);
+    }
+    
+    private String generateState() {
+        return String.valueOf(System.currentTimeMillis());
+    }
 }
