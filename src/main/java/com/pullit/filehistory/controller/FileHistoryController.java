@@ -21,14 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "File History", description = "문제 가공 파일 히스토리 관련 API")
 public class FileHistoryController {
     private final FileHistoryService fileHistoryService;
-
     @Operation(summary = "파일 업로드 후 내역 저장", description = "file s3 저장 후 호출 api. id를 받아 파일 히스토리 저장")
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<Long>> createFileHistory(@RequestParam Long fileMetadataId, @RequestParam Long subjectId, @AuthUser CustomUserDetails currentUser) {
         Long fileHistoryId = fileHistoryService.createHistory(fileMetadataId, subjectId, currentUser);
         return ResponseEntity.ok(ApiResponse.success(fileHistoryId, "파일 히스토리 생성 완료"));
     }
-
 
 }
 //    //TODO: 교과서 선택시 교과서 리스트 반환
