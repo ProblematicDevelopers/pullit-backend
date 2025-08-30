@@ -3,16 +3,20 @@ package com.pullit.filehistory.controller;
 import com.pullit.auth.authentication.CustomUserDetails;
 import com.pullit.common.annotation.AuthUser;
 import com.pullit.common.dto.response.ApiResponse;
+import com.pullit.filehistory.dto.response.PdfProcessingResponse;
 import com.pullit.filehistory.service.FileHistoryService;
+import com.pullit.filehistory.service.PdfProcessingService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -21,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "File History", description = "문제 가공 파일 히스토리 관련 API")
 public class FileHistoryController {
     private final FileHistoryService fileHistoryService;
+    private final PdfProcessingService pdfProcessingService;
+    
     @Operation(summary = "파일 업로드 후 내역 저장", description = "file s3 저장 후 호출 api. id를 받아 파일 히스토리 저장")
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<Long>> createFileHistory(@RequestParam Long fileMetadataId, @RequestParam Long subjectId, @AuthUser CustomUserDetails currentUser) {
@@ -28,29 +34,55 @@ public class FileHistoryController {
         return ResponseEntity.ok(ApiResponse.success(fileHistoryId, "파일 히스토리 생성 완료"));
     }
 
+    @Operation(summary = "PDF를 이미지로 변환", description = "업로드된 PDF 파일을 페이지별 이미지로 변환하여 S3에 저장")
+    @PostMapping(value = "/process-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<PdfProcessingResponse>> processPdfToImages(
+            @Parameter(description = "PDF 파일", required = true)
+            @RequestParam("file") MultipartFile pdfFile,
+            @Parameter(description = "파일 히스토리 ID", required = true)
+            @RequestParam("fileHistoryId") Long fileHistoryId,
+            @AuthUser CustomUserDetails currentUser) {
+        
+        log.info("PDF processing request: fileHistoryId={}, fileName={}, size={}, userId={}", 
+                fileHistoryId, pdfFile.getOriginalFilename(), pdfFile.getSize(), currentUser.getUserId());
+        
+        PdfProcessingResponse response = pdfProcessingService.processPdfToImages(pdfFile, fileHistoryId);
+        
+        return ResponseEntity.ok(ApiResponse.success(response, "PDF 처리가 완료되었습니다."));
+    }
+
+    @Operation(summary = "페이지 순서 변경", description = "PDF 이미지 페이지 순서를 변경합니다")
+    @PutMapping("/update-order")
+    public ResponseEntity<ApiResponse<List<String>>> updateImageOrder(
+            @Parameter(description = "파일 히스토리 ID", required = true)
+            @RequestParam("fileHistoryId") Long fileHistoryId,
+            @Parameter(description = "이미지 순서 (콤마로 구분된 인덱스)", example = "1,3,2,4", required = true)
+            @RequestParam("imageOrder") String imageOrder,
+            @AuthUser CustomUserDetails currentUser) {
+        
+        log.info("Image order update request: fileHistoryId={}, order={}, userId={}", 
+                fileHistoryId, imageOrder, currentUser.getUserId());
+        
+        List<String> updatedUrls = pdfProcessingService.updateImageOrder(fileHistoryId, imageOrder);
+        
+        return ResponseEntity.ok(ApiResponse.success(updatedUrls, "페이지 순서가 변경되었습니다."));
+    }
+
+    @Operation(summary = "페이지 삭제", description = "특정 PDF 이미지 페이지를 삭제합니다")
+    @DeleteMapping("/remove-page")
+    public ResponseEntity<ApiResponse<List<String>>> removePage(
+            @Parameter(description = "파일 히스토리 ID", required = true)
+            @RequestParam("fileHistoryId") Long fileHistoryId,
+            @Parameter(description = "삭제할 페이지 인덱스 (0부터 시작)", required = true)
+            @RequestParam("pageIndex") int pageIndex,
+            @AuthUser CustomUserDetails currentUser) {
+        
+        log.info("Page removal request: fileHistoryId={}, pageIndex={}, userId={}", 
+                fileHistoryId, pageIndex, currentUser.getUserId());
+        
+        List<String> remainingUrls = pdfProcessingService.removePage(fileHistoryId, pageIndex);
+        
+        return ResponseEntity.ok(ApiResponse.success(remainingUrls, "페이지가 삭제되었습니다."));
+    }
+
 }
-//    //TODO: 교과서 선택시 교과서 리스트 반환
-//    @GetMapping("/textbook")
-//    @Operation(summary = "교과서 선택", description = "교과서 리스트를 출력합니다")
-//    public ResponseEntity<ApiResponse<List<SubjectResponse>>> findAllTextbook() {
-//        List<SubjectResponse> subjects = subjectService.findAllSubjectsOnly();
-//        return ResponseEntity.ok(ApiResponse.success(subjects));
-//    }
-//
-//    //TODO: pdf 업로드시 file history 저장
-// 참고: 교과서 선택으로 바로 빠지기때문에 해당 함수는 주석 처리만 해둠
-//    @GetMapping("/source")
-//    @Operation(summary = "교과서 OR CBT 모드 선택", description = "문제 가공 모드 선택 페이지. 교과서 혹은 CBT 둘중 하나를 선택합니다. ")
-//    public ResponseEntity<ApiResponse<List<ProblemSourceOptionResponse>>> selectProblemSource() {
-//        List<ProblemSourceOptionResponse> problemSourceOptionResponses = List.of(
-//                new ProblemSourceOptionResponse(
-//                        ServiceConstants.CBT_CODE,
-//                        ServiceConstants.CBT_NAME,
-//                        ServiceConstants.CBT_DESC),
-//                new ProblemSourceOptionResponse(
-//                        ServiceConstants.TEXTBOOK_CODE,
-//                        ServiceConstants.TEXTBOOK_NAME,
-//                        ServiceConstants.TEXTBOOK_DESC)
-//        );
-//        return ResponseEntity.ok(ApiResponse.success(problemSourceOptionResponses));
-//    }
