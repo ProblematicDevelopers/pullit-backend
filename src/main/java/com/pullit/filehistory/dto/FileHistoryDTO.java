@@ -21,6 +21,10 @@ public class FileHistoryDTO {
     private Long fileMetadataId;
     private Long subjectId;
     private String fileHistoryName;
+    private String originalFileName;
+    private String areaCode;
+    private Long fileSize;
+    private String status;
     private int imgCount;
     //e.g) "1,2,3,4,5"
     private String imgOrder;
@@ -38,11 +42,16 @@ public class FileHistoryDTO {
                 .fileMetadataId(fileHistory.getFileMetadata() != null ? fileHistory.getFileMetadata().getId() : null)
                 .subjectId(fileHistory.getSubject() != null ? fileHistory.getSubject().getSubjectId() : null)
                 .fileHistoryName(fileHistory.getFileHistoryName())
+                .originalFileName(fileHistory.getFileMetadata() != null ? fileHistory.getFileMetadata().getOriginalFilename() : null)
+                .areaCode(fileHistory.getSubject() != null ? fileHistory.getSubject().getArea() != null ? fileHistory.getSubject().getArea().getCode() : null : null)
+                .fileSize(fileHistory.getFileMetadata() != null ? fileHistory.getFileMetadata().getFileSize() : null)
+                .status("completed") // 기본값으로 설정, 추후 상태 관리 로직 필요시 수정
                 .imgCount(fileHistory.getImgCount())
                 .imgOrder(fileHistory.getImgOrder())
                 .pdfImages(fileHistory.getPdfImages() != null ? fileHistory.getPdfImages().stream().map(PdfImageDTO::from).collect(Collectors.toList()) : null)
                 .createdBy(fileHistory.getCreatedBy())
                 .createdDate(fileHistory.getCreatedDate())
+                .updatedDate(fileHistory.getUpdatedDate())
                 .build();
     }
 
