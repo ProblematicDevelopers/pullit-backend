@@ -45,7 +45,8 @@ public enum ErrorCode {
     FILE_SIZE_EXCEEDED("FILE_004", "파일 크기가 제한을 초과했습니다.", HttpStatus.BAD_REQUEST),
     FILE_DELETE_FAILED("FILE_005", "파일 삭제에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     FILE_DOWNLOAD_FAILED("FILE_006", "파일 다운로드에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
-    
+    FILE_PROCESSING_ERROR("FILE_007", "파일 변환에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+
     // ========== S3 관련 에러 (S3) ==========
     S3_OPERATION_FAILED("S3_001", "S3 작업 중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     S3_BUCKET_NOT_FOUND("S3_002", "S3 버킷을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),

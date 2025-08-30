@@ -3,6 +3,7 @@ package com.pullit.filehistory.service;
 import com.pullit.common.exception.BusinessException;
 import com.pullit.common.exception.ErrorCode;
 import com.pullit.common.s3.service.S3Service;
+import com.pullit.common.s3.enums.S3Directory;
 import com.pullit.filehistory.dto.response.PdfProcessingResponse;
 import com.pullit.filehistory.entity.FileHistory;
 import com.pullit.filehistory.entity.PdfImage;
@@ -10,6 +11,7 @@ import com.pullit.filehistory.repository.FileHistoryRepository;
 import com.pullit.filehistory.repository.PdfImageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +23,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -52,9 +55,9 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.FILE_NOT_FOUND));
 
             List<PdfProcessingResponse.PdfImageInfo> imageInfos = new ArrayList<>();
-            
             // PDF 문서 로드
-            try (PDDocument document = PDDocument.load(pdfFile.getInputStream())) {
+            byte[] pdfBytes = pdfFile.getBytes();
+            try (PDDocument document = Loader.loadPDF(pdfBytes)) {
                 PDFRenderer pdfRenderer = new PDFRenderer(document);
                 int pageCount = document.getNumberOfPages();
                 
@@ -71,12 +74,13 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
                     byte[] imageBytes = baos.toByteArray();
                     
                     // S3에 업로드
-                    String fileName = String.format("pdf-images/%d/page_%d.%s", 
+                    String fileName = String.format("page_%d_%d.%s", 
                             fileHistoryId, pageIndex + 1, imageFormat);
-                    String s3Key = s3Service.uploadFile(imageBytes, fileName, "image/" + imageFormat);
+                    var uploadResponse = s3Service.upload(imageBytes, fileName, S3Directory.IMAGE_QUESTION);
+                    String s3Key = uploadResponse.getS3Key();
                     
-                    // Presigned URL 생성
-                    String presignedUrl = s3Service.generatePresignedUrl(s3Key, 3600); // 1시간 유효
+                    // Presigned URL 생성 (1시간 유효)
+                    String presignedUrl = s3Service.generatePresignedUrl(s3Key);
                     
                     // PdfImage 엔티티 생성 및 저장
                     PdfImage pdfImage = PdfImage.builder()
@@ -151,8 +155,8 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
         for (Integer index : orderIndexes) {
             if (index > 0 && index <= pdfImages.size()) {
                 PdfImage pdfImage = pdfImages.get(index - 1); // 1-based to 0-based
-                // 새로운 presigned URL 생성
-                String newPresignedUrl = s3Service.generatePresignedUrl(pdfImage.getS3Key(), 3600);
+                // 새로운 presigned URL 생성 (1시간 유효)
+                String newPresignedUrl = s3Service.generatePresignedUrl(pdfImage.getS3Key(), Duration.ofHours(1));
                 reorderedUrls.add(newPresignedUrl);
             }
         }
@@ -171,7 +175,7 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
         List<PdfImage> pdfImages = pdfImageRepository.findByFileHistoryOrderByPageNumber(fileHistory);
         
         if (pageIndex < 0 || pageIndex >= pdfImages.size()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
         
         // 해당 페이지 삭제
@@ -179,7 +183,7 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
         
         // S3에서 파일 삭제
         try {
-            s3Service.deleteFile(imageToDelete.getS3Key());
+            s3Service.delete(imageToDelete.getS3Key());
         } catch (Exception e) {
             log.warn("Failed to delete S3 file: {}", imageToDelete.getS3Key(), e);
         }
@@ -194,7 +198,7 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
         // 남은 이미지들의 새로운 presigned URL 목록 반환
         List<PdfImage> remainingImages = pdfImageRepository.findByFileHistoryOrderByPageNumber(fileHistory);
         return remainingImages.stream()
-                .map(pdfImage -> s3Service.generatePresignedUrl(pdfImage.getS3Key(), 3600))
+                .map(pdfImage -> s3Service.generatePresignedUrl(pdfImage.getS3Key(), Duration.ofHours(1)))
                 .collect(Collectors.toList());
     }
 }
