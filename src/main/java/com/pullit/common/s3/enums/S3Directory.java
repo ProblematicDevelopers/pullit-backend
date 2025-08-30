@@ -17,6 +17,7 @@ public enum S3Directory {
     IMAGE_PROFILE("images/profiles/", "프로필 이미지"),
     IMAGE_QUESTION("images/questions/", "문제 이미지"),
     IMAGE_LOGO("images/logos/", "로고 이미지"),
+    OCR_IMAGES("images/ocr/", "OCR 처리 이미지"),
 
     // 엑셀 관련
     EXCEL_EXPORT("excels/exports/", "엑셀 내보내기"),
