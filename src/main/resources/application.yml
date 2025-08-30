@@ -44,17 +44,12 @@ spring:
     type: redis
     redis:
       time-to-live: 360000
-
-# PDF Processing Configuration
-app:
-  pdf:
-    image-dpi: 300  # PDF를 이미지로 변환할 때의 DPI (해상도)
-    image-format: png  # 변환할 이미지 형식 (png, jpg 등)
+      
   security:
     oauth2:
       resourceserver:
         jwt:
-          jws -algorithms: RS256
+          jws-algorithms: RS256
           public-key-location: classpath:keys/public-key.pem
       client:
         registration:
@@ -99,6 +94,12 @@ app:
     aws:
       region:
         static: ap-northeast-2
+
+# PDF Processing Configuration
+app:
+  pdf:
+    image-dpi: 300  # PDF를 이미지로 변환할 때의 DPI (해상도)
+    image-format: png  # 변환할 이미지 형식 (png, jpg 등)
 
 server:
   port: 8080
