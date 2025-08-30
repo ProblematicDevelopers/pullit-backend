@@ -27,4 +27,22 @@ public class PdfImage {
     @OneToMany(mappedBy = "pdfImage")
     private List<OcrHistory> ocrHistories;
 
+    @Column(name = "page_number")
+    private Integer pageNumber;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "image_width")
+    private Integer imageWidth;
+
+    @Column(name = "image_height")
+    private Integer imageHeight;
+
+    @Column(name = "file_size")
+    private Long fileSize;
+
+    @Column(name = "s3_key", length = 300)
+    private String s3Key;
+
 }
