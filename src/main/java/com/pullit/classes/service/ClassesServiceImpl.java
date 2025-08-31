@@ -160,6 +160,27 @@ public class ClassesServiceImpl implements ClassesService {
                                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id=" + userId));
                 System.out.println("user: " + user);
 
+                // 기존 완료된 시도 확인
+                AttemptExam existingDoneAttempt = attemptExamRepository.findByUserAndExamAndStatus(user, userExam,
+                                AttemptExam.AttemptStatus.DONE);
+                if (existingDoneAttempt != null) {
+                        // 완료된 시험이 있으면 완료 상태로 반환
+                        return LiveExamAttemptResponse.builder()
+                                        .attemptId(existingDoneAttempt.getId())
+                                        .examId(existingDoneAttempt.getExam().getId())
+                                        .status(AttemptExam.AttemptStatus.DONE) // 완료 상태 표시
+                                        .userId(existingDoneAttempt.getUser().getId())
+                                        .remainTime(0) // 완료된 시험이므로 남은 시간 0
+                                        .startTime(existingDoneAttempt.getStartedAt() != null
+                                                        ? existingDoneAttempt.getStartedAt().toString()
+                                                        : null)
+                                        .endTime(existingDoneAttempt.getCompletedAt() != null
+                                                        ? existingDoneAttempt.getCompletedAt().toString()
+                                                        : null)
+                                        .message("이미 완료된 시험입니다.") // 완료 메시지 추가
+                                        .build();
+                }
+
                 // 기존 진행 중인 시도 확인
                 AttemptExam existingAttempt = attemptExamRepository.findByUserAndExamAndStatus(user, userExam,
                                 AttemptExam.AttemptStatus.IN_PROGRESS);
@@ -168,7 +189,7 @@ public class ClassesServiceImpl implements ClassesService {
                         return LiveExamAttemptResponse.builder()
                                         .attemptId(existingAttempt.getId())
                                         .examId(existingAttempt.getExam().getId())
-                                        .status(existingAttempt.getStatus().name())
+                                        .status(AttemptExam.AttemptStatus.IN_PROGRESS)
                                         .userId(existingAttempt.getUser().getId())
                                         .remainTime(existingAttempt.getRemainTime())
                                         .startTime(existingAttempt.getStartedAt() != null
@@ -215,7 +236,7 @@ public class ClassesServiceImpl implements ClassesService {
                 return LiveExamAttemptResponse.builder()
                                 .attemptId(savedAttempt.getId())
                                 .examId(savedAttempt.getExam().getId())
-                                .status(savedAttempt.getStatus().name())
+                                .status(AttemptExam.AttemptStatus.IN_PROGRESS)
                                 .userId(savedAttempt.getUser().getId())
                                 .remainTime(savedAttempt.getRemainTime())
                                 .startTime(savedAttempt.getStartedAt() != null ? savedAttempt.getStartedAt().toString()

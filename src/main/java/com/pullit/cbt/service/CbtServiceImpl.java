@@ -200,21 +200,21 @@ public class CbtServiceImpl implements CbtService {
     public CbtExamResponse getCbtExam(Long examId, Long userId) {
         UserExam userExam = userExamRepository.findById(examId)
                 .orElseThrow(() -> new IllegalArgumentException("시험을 찾을 수 없습니다. id=" + examId));
-        
+
         // 사용자 권한 확인 (자신의 시험이거나 공개된 시험만 조회 가능)
         if (!userExam.getCreatedBy().equals(userId) && userExam.getVisibility() != ExamVisibility.PUBLIC) {
             throw new IllegalArgumentException("해당 시험에 대한 접근 권한이 없습니다.");
         }
-        
+
         List<CbtExamItemResponse> examItems = userExam.getExamItems().stream()
                 .map(item -> {
                     // ItemHtmlData 조회
                     var itemHtmlData = itemHtmlDataRepository.findByItemId(item.getItemId()).orElse(null);
-                    
+
                     // ItemMetadata 조회하여 문제 유형 확인
                     var itemMetadata = itemMetadataRepository.findById(item.getItemId()).orElse(null);
                     String questionType = "FREE_CHOICE"; // 기본값
-                    
+
                     if (itemMetadata != null && itemMetadata.getQuestionForm() != null) {
                         Long questionFormCode = itemMetadata.getQuestionForm().getCode();
                         if (questionFormCode != null) {
@@ -237,7 +237,7 @@ public class CbtServiceImpl implements CbtService {
                             }
                         }
                     }
-                    
+
                     return CbtExamItemResponse.builder()
                             .itemId(item.getItemId())
                             .subjectId(item.getSubjectId())
@@ -257,7 +257,7 @@ public class CbtServiceImpl implements CbtService {
                             .build();
                 })
                 .toList();
-        
+
         return CbtExamResponse.builder()
                 .examId(userExam.getId())
                 .examName(userExam.getExamName())
@@ -275,19 +275,19 @@ public class CbtServiceImpl implements CbtService {
     @Override
     public CbtAttemptResponse createOrGetAttempt(Long userId, CbtAttemptRequest request) {
         Long examId = request.getExamId();
-        
+
         // 시험 존재 확인
         UserExam userExam = userExamRepository.findById(examId)
                 .orElseThrow(() -> new IllegalArgumentException("시험을 찾을 수 없습니다. id=" + examId));
-        
+
         // 사용자 존재 확인
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id=" + userId));
-        
+
         // 기존 진행 중인 시도 확인
         AttemptExam existingAttempt = attemptExamRepository.findByUserAndExamAndStatus(
                 user, userExam, AttemptExam.AttemptStatus.IN_PROGRESS);
-        
+
         if (existingAttempt != null) {
             // 기존 진행 중인 시도가 있으면 반환
             return CbtAttemptResponse.builder()
@@ -296,8 +296,10 @@ public class CbtServiceImpl implements CbtService {
                     .status(existingAttempt.getStatus().name())
                     .userId(existingAttempt.getUser().getId())
                     .remainTime(existingAttempt.getRemainTime())
-                    .startTime(existingAttempt.getStartedAt() != null ? existingAttempt.getStartedAt().toString() : null)
-                    .endTime(existingAttempt.getCompletedAt() != null ? existingAttempt.getCompletedAt().toString() : null)
+                    .startTime(
+                            existingAttempt.getStartedAt() != null ? existingAttempt.getStartedAt().toString() : null)
+                    .endTime(existingAttempt.getCompletedAt() != null ? existingAttempt.getCompletedAt().toString()
+                            : null)
                     .build();
         }
         System.out.println("userExam.getTimeLimit(): " + userExam.getTimeLimit());
@@ -313,9 +315,9 @@ public class CbtServiceImpl implements CbtService {
                 .startedAt(java.time.LocalDateTime.now())
                 .remainTime(userExam.getTimeLimit() != null ? userExam.getTimeLimit() * 60 : null) // 분을 초로 변환
                 .build();
-        
+
         AttemptExam savedAttempt = attemptExamRepository.save(newAttempt);
-        
+
         // 시험 문제 수만큼 AttemptExamQuestion 미리 생성
         for (UserExamItem examItem : userExam.getExamItems()) {
             AttemptExamQuestion attemptQuestion = AttemptExamQuestion.builder()
@@ -327,10 +329,10 @@ public class CbtServiceImpl implements CbtService {
                     .points(examItem.getPoints())
                     .answeredAt(null)
                     .build();
-            
+
             attemptExamQuestionRepository.save(attemptQuestion);
         }
-        
+
         return CbtAttemptResponse.builder()
                 .attemptId(savedAttempt.getId())
                 .examId(savedAttempt.getExam().getId())
@@ -347,15 +349,15 @@ public class CbtServiceImpl implements CbtService {
         // AttemptExam 조회
         AttemptExam attemptExam = attemptExamRepository.findById(attemptId)
                 .orElseThrow(() -> new IllegalArgumentException("시험 시도를 찾을 수 없습니다. id=" + attemptId));
-        
+
         // 권한 확인 (자신의 시도만 조회 가능)
         if (!attemptExam.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("해당 시험 시도에 대한 접근 권한이 없습니다.");
         }
-        
+
         // 답안 목록 조회
         List<AttemptExamQuestion> attemptQuestions = attemptExamQuestionRepository.findByAttemptExamId(attemptId);
-        
+
         List<AttemptQuestionAnswerResponse> answers = attemptQuestions.stream()
                 .map(question -> AttemptQuestionAnswerResponse.builder()
                         .questionId(question.getId())
@@ -369,7 +371,7 @@ public class CbtServiceImpl implements CbtService {
                         .isAnswered(question.isAnswered())
                         .build())
                 .toList();
-        
+
         // 통계 계산
         int totalQuestions = answers.size();
         int answeredQuestions = (int) answers.stream().filter(AttemptQuestionAnswerResponse::getIsAnswered).count();
@@ -381,7 +383,7 @@ public class CbtServiceImpl implements CbtService {
         int maxScore = answers.stream()
                 .mapToInt(answer -> answer.getPoints() != null ? answer.getPoints() : 0)
                 .sum();
-        
+
         return AttemptAnswerResponse.builder()
                 .attemptId(attemptId)
                 .examId(attemptExam.getExam().getId())
@@ -401,47 +403,50 @@ public class CbtServiceImpl implements CbtService {
         // AttemptExam 조회 및 권한 확인
         AttemptExam attemptExam = attemptExamRepository.findById(attemptId)
                 .orElseThrow(() -> new IllegalArgumentException("시험 시도를 찾을 수 없습니다. id=" + attemptId));
-        
+
         // 권한 확인 (자신의 시도만 수정 가능)
         if (!attemptExam.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("해당 시험 시도에 대한 접근 권한이 없습니다.");
         }
-        
+
         try {
             // Redis 키 생성 (attempt:attemptId:key 형태)
             String redisKey = redisCacheService.createCompositeKey(
-                "attempt", 
-                attemptId.toString(), 
-                request.getKey() != null ? request.getKey() : "data"
-            );
-            
+                    "attempt",
+                    attemptId.toString(),
+                    request.getKey() != null ? request.getKey() : "data");
+
             // Redis에 데이터 저장
             if (request.getExpiration() != null && request.getExpiration() > 0) {
                 // 만료 시간이 설정된 경우
-                redisCacheService.put(redisKey, request.getValue(), request.getExpiration(), java.util.concurrent.TimeUnit.SECONDS);
+                redisCacheService.put(redisKey, request.getValue(), request.getExpiration(),
+                        java.util.concurrent.TimeUnit.SECONDS);
             } else {
                 // 기본 TTL 사용
-                redisCacheService.put(redisKey, request.getValue(), CacheConstants.MEDIUM_TTL_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+                redisCacheService.put(redisKey, request.getValue(), CacheConstants.MEDIUM_TTL_SECONDS,
+                        java.util.concurrent.TimeUnit.SECONDS);
             }
-            
+
             // 추가 데이터가 있는 경우 Hash로 저장
             if (request.getData() != null && !request.getData().isEmpty()) {
                 String hashKey = redisCacheService.createCompositeKey("attempt", attemptId.toString(), "hash");
                 for (Map.Entry<String, Object> entry : request.getData().entrySet()) {
-                    redisCacheService.put(hashKey + ":" + entry.getKey(), entry.getValue(), 
-                        request.getExpiration() != null ? request.getExpiration() : CacheConstants.MEDIUM_TTL_SECONDS, 
-                        java.util.concurrent.TimeUnit.SECONDS);
+                    redisCacheService.put(hashKey + ":" + entry.getKey(), entry.getValue(),
+                            request.getExpiration() != null ? request.getExpiration()
+                                    : CacheConstants.MEDIUM_TTL_SECONDS,
+                            java.util.concurrent.TimeUnit.SECONDS);
                 }
             }
-            
+
             return RedisUpdateResponse.builder()
                     .key(redisKey)
                     .value(request.getValue())
                     .success(true)
                     .message("Redis 데이터 업데이트 성공")
-                    .expiration(request.getExpiration() != null ? request.getExpiration() : CacheConstants.MEDIUM_TTL_SECONDS)
+                    .expiration(request.getExpiration() != null ? request.getExpiration()
+                            : CacheConstants.MEDIUM_TTL_SECONDS)
                     .build();
-                    
+
         } catch (Exception e) {
             return RedisUpdateResponse.builder()
                     .key(request.getKey())
@@ -450,163 +455,168 @@ public class CbtServiceImpl implements CbtService {
                     .message("Redis 데이터 업데이트 실패: " + e.getMessage())
                     .expiration(null)
                     .build();
-                 }
-     }
+        }
+    }
 
-     @Override
-     public RedisDataResponse getRedisData(Long attemptId, Long userId) {
-         // AttemptExam 조회 및 권한 확인
-         AttemptExam attemptExam = attemptExamRepository.findById(attemptId)
-                 .orElseThrow(() -> new IllegalArgumentException("시험 시도를 찾을 수 없습니다. id=" + attemptId));
-         
-         // 권한 확인 (자신의 시도만 조회 가능)
-         if (!attemptExam.getUser().getId().equals(userId)) {
-             throw new IllegalArgumentException("해당 시험 시도에 대한 접근 권한이 없습니다.");
-         }
-         
-         try {
-             Map<String, Object> redisData = new java.util.HashMap<>();
-             
-             // attempt:attemptId:* 패턴으로 모든 키 조회
-             String keyPattern = redisCacheService.createCompositeKey("attempt", attemptId.toString(), "*");
-             
-             // Redis에서 패턴과 일치하는 키들을 찾아서 데이터 조회
-             // 주요 키들을 직접 조회하는 방식으로 구현
-             String[] commonKeys = {"data", "currentQuestion", "startTime", "remainingTime", "progress"};
-             
-             for (String key : commonKeys) {
-                 String redisKey = redisCacheService.createCompositeKey("attempt", attemptId.toString(), key);
-                 Object value = redisCacheService.get(redisKey, Object.class);
-                 if (value != null) {
-                     redisData.put(key, value);
-                 }
-             }
-             
-             // Hash 데이터도 조회
-             String hashKeyPattern = redisCacheService.createCompositeKey("attempt", attemptId.toString(), "hash");
-             String[] hashKeys = {"startTime", "remainingTime", "currentQuestion", "answers", "status"};
-             
-             for (String hashKey : hashKeys) {
-                 String fullHashKey = hashKeyPattern + ":" + hashKey;
-                 Object value = redisCacheService.get(fullHashKey, Object.class);
-                 if (value != null) {
-                     redisData.put("hash_" + hashKey, value);
-                 }
-             }
-             
-             return RedisDataResponse.builder()
-                     .attemptId(attemptId)
-                     .data(redisData)
-                     .success(true)
-                     .message("Redis 데이터 조회 성공")
-                     .totalKeys(redisData.size())
-                     .build();
-                     
-         } catch (Exception e) {
-             return RedisDataResponse.builder()
-                     .attemptId(attemptId)
-                     .data(new java.util.HashMap<>())
-                     .success(false)
-                     .message("Redis 데이터 조회 실패: " + e.getMessage())
-                     .totalKeys(0)
-                     .build();
-                  }
-     }
+    @Override
+    public RedisDataResponse getRedisData(Long attemptId, Long userId) {
+        // AttemptExam 조회 및 권한 확인
+        AttemptExam attemptExam = attemptExamRepository.findById(attemptId)
+                .orElseThrow(() -> new IllegalArgumentException("시험 시도를 찾을 수 없습니다. id=" + attemptId));
 
-     @Override
-     public RedisMigrationResponse migrateRedisToDatabase(Long attemptId, RedisMigrationRequest request, Long userId) {
-         // AttemptExam 조회 및 권한 확인
-         AttemptExam attemptExam = attemptExamRepository.findById(attemptId)
-                 .orElseThrow(() -> new IllegalArgumentException("시험 시도를 찾을 수 없습니다. id=" + attemptId));
-         
-         // 권한 확인 (자신의 시도만 마이그레이션 가능)
-         if (!attemptExam.getUser().getId().equals(userId)) {
-             throw new IllegalArgumentException("해당 시험 시도에 대한 접근 권한이 없습니다.");
-         }
-         
-         try {
-             int migratedQuestions = 0;
-             
-             // AttemptExamQuestion들을 조회
-             List<AttemptExamQuestion> attemptQuestions = attemptExamQuestionRepository.findByAttemptExamId(attemptId);
-             
-             // 각 문제별로 Redis 데이터를 DB에 업데이트
-             for (AttemptExamQuestion attemptQuestion : attemptQuestions) {
-                 String questionId = attemptQuestion.getExamItem().getItemOrder().toString();
-                 System.out.println("questionId: " + questionId);
-                 
-                 // 답변 업데이트
-                 if (request.getQuestionAnswers() != null && request.getQuestionAnswers().containsKey(questionId)) {
-                     String userAnswer = request.getQuestionAnswers().get(questionId);
-                     attemptQuestion.setUserAnswer(userAnswer);
-                     
-                     // 정답 여부 확인 (ItemHtmlData에서 정답 조회)
-                     var itemHtmlData = itemHtmlDataRepository.findByItemId(attemptQuestion.getExamItem().getItemId()).orElse(null);
-                     if (itemHtmlData != null && itemHtmlData.getAnswer() != null) {
-                         boolean isCorrect = itemHtmlData.getAnswer().equals(userAnswer);
-                         attemptQuestion.setIsCorrect(isCorrect);
-                         
-                         // 정답인 경우 포인트 부여, 오답인 경우 0점
-                         attemptQuestion.setPoints(isCorrect ? attemptQuestion.getPoints() : 0);
-                     }
-                     
-                     // 답변 시간 설정
-                     attemptQuestion.setAnsweredAt(java.time.LocalDateTime.now());
-                 }
-                 
-                 // 소요 시간 업데이트
-                 if (request.getQuestionTimes() != null && request.getQuestionTimes().containsKey(questionId)) {
-                     Integer duration = request.getQuestionTimes().get(questionId);
-                     attemptQuestion.setDuration(duration);
-                 }
-                 
-                 // DB에 저장
-                 attemptExamQuestionRepository.save(attemptQuestion);
-                 migratedQuestions++;
-             }
-             
-             if( request.getStatus().equals("DONE")) {
+        // 권한 확인 (자신의 시도만 조회 가능)
+        if (!attemptExam.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("해당 시험 시도에 대한 접근 권한이 없습니다.");
+        }
+
+        try {
+            Map<String, Object> redisData = new java.util.HashMap<>();
+
+            // attempt:attemptId:* 패턴으로 모든 키 조회
+            String keyPattern = redisCacheService.createCompositeKey("attempt", attemptId.toString(), "*");
+
+            // Redis에서 패턴과 일치하는 키들을 찾아서 데이터 조회
+            // 주요 키들을 직접 조회하는 방식으로 구현
+            String[] commonKeys = { "data", "currentQuestion", "startTime", "remainingTime", "progress" };
+
+            for (String key : commonKeys) {
+                String redisKey = redisCacheService.createCompositeKey("attempt", attemptId.toString(), key);
+                Object value = redisCacheService.get(redisKey, Object.class);
+                if (value != null) {
+                    redisData.put(key, value);
+                }
+            }
+
+            // Hash 데이터도 조회
+            String hashKeyPattern = redisCacheService.createCompositeKey("attempt", attemptId.toString(), "hash");
+            String[] hashKeys = { "startTime", "remainingTime", "currentQuestion", "answers", "status", "questionTimes",
+                    "questionVisits",
+                    "questionAnswers",
+                    "remainingTime",
+                    "currentQuestion" };
+
+            for (String hashKey : hashKeys) {
+                String fullHashKey = hashKeyPattern + ":" + hashKey;
+                Object value = redisCacheService.get(fullHashKey, Object.class);
+                if (value != null) {
+                    redisData.put("hash_" + hashKey, value);
+                }
+            }
+
+            return RedisDataResponse.builder()
+                    .attemptId(attemptId)
+                    .data(redisData)
+                    .success(true)
+                    .message("Redis 데이터 조회 성공")
+                    .totalKeys(redisData.size())
+                    .build();
+
+        } catch (Exception e) {
+            return RedisDataResponse.builder()
+                    .attemptId(attemptId)
+                    .data(new java.util.HashMap<>())
+                    .success(false)
+                    .message("Redis 데이터 조회 실패: " + e.getMessage())
+                    .totalKeys(0)
+                    .build();
+        }
+    }
+
+    @Override
+    public RedisMigrationResponse migrateRedisToDatabase(Long attemptId, RedisMigrationRequest request, Long userId) {
+        // AttemptExam 조회 및 권한 확인
+        AttemptExam attemptExam = attemptExamRepository.findById(attemptId)
+                .orElseThrow(() -> new IllegalArgumentException("시험 시도를 찾을 수 없습니다. id=" + attemptId));
+
+        // 권한 확인 (자신의 시도만 마이그레이션 가능)
+        if (!attemptExam.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("해당 시험 시도에 대한 접근 권한이 없습니다.");
+        }
+
+        try {
+            int migratedQuestions = 0;
+
+            // AttemptExamQuestion들을 조회
+            List<AttemptExamQuestion> attemptQuestions = attemptExamQuestionRepository.findByAttemptExamId(attemptId);
+
+            // 각 문제별로 Redis 데이터를 DB에 업데이트
+            for (AttemptExamQuestion attemptQuestion : attemptQuestions) {
+                String questionId = attemptQuestion.getExamItem().getItemOrder().toString();
+                System.out.println("questionId: " + questionId);
+
+                // 답변 업데이트
+                if (request.getQuestionAnswers() != null && request.getQuestionAnswers().containsKey(questionId)) {
+                    String userAnswer = request.getQuestionAnswers().get(questionId);
+                    attemptQuestion.setUserAnswer(userAnswer);
+
+                    // 정답 여부 확인 (ItemHtmlData에서 정답 조회)
+                    var itemHtmlData = itemHtmlDataRepository.findByItemId(attemptQuestion.getExamItem().getItemId())
+                            .orElse(null);
+                    if (itemHtmlData != null && itemHtmlData.getAnswer() != null) {
+                        boolean isCorrect = itemHtmlData.getAnswer().equals(userAnswer);
+                        attemptQuestion.setIsCorrect(isCorrect);
+
+                        // 정답인 경우 포인트 부여, 오답인 경우 0점
+                        attemptQuestion.setPoints(isCorrect ? attemptQuestion.getPoints() : 0);
+                    }
+
+                    // 답변 시간 설정
+                    attemptQuestion.setAnsweredAt(java.time.LocalDateTime.now());
+                }
+
+                // 소요 시간 업데이트
+                if (request.getQuestionTimes() != null && request.getQuestionTimes().containsKey(questionId)) {
+                    Integer duration = request.getQuestionTimes().get(questionId);
+                    attemptQuestion.setDuration(duration);
+                }
+
+                // DB에 저장
+                attemptExamQuestionRepository.save(attemptQuestion);
+                migratedQuestions++;
+            }
+
+            if (request.getStatus().equals("DONE")) {
                 // AttemptExam 상태를 DONE으로 변경
                 attemptExam.complete();
-             }
-             
-             // 총 시험 시간이 제공된 경우 저장
-             if (request.getRemainingTime() != null) {
-                //  AttemptExam에 총 시간 필드가 있다면 저장
-                 attemptExam.setRemainTime(request.getRemainingTime());
-             }
-             
-             attemptExamRepository.save(attemptExam);
-             
-             // Redis에서 관련 데이터 삭제 (선택사항)
-             try {
-                 String keyPattern = redisCacheService.createCompositeKey("attempt", attemptId.toString(), "*");
-                 // Redis 키 삭제 로직 (실제 구현에서는 RedisTemplate의 delete 메서드 사용)
-                 // redisCacheService.deleteByPattern(keyPattern);
-             } catch (Exception e) {
-                 // Redis 삭제 실패는 무시 (DB 마이그레이션은 성공)
-                 System.err.println("Redis 데이터 삭제 실패: " + e.getMessage());
-             }
-             
-             return RedisMigrationResponse.builder()
-                     .attemptId(attemptId)
-                     .success(true)
-                     .message("Redis 데이터 DB 마이그레이션 성공")
-                     .migratedQuestions(migratedQuestions)
-                     .remainingTime(request.getRemainingTime())
-                     .completedAt(attemptExam.getCompletedAt().toString())
-                     .build();
-                     
-         } catch (Exception e) {
-             return RedisMigrationResponse.builder()
-                     .attemptId(attemptId)
-                     .success(false)
-                     .message("Redis 데이터 DB 마이그레이션 실패: " + e.getMessage())
-                     .migratedQuestions(0)
-                     .remainingTime(request.getRemainingTime())
-                     .completedAt(null)
-                     .build();
-         }
-     }
+            }
 
- }
+            // 총 시험 시간이 제공된 경우 저장
+            if (request.getRemainingTime() != null) {
+                // AttemptExam에 총 시간 필드가 있다면 저장
+                attemptExam.setRemainTime(request.getRemainingTime());
+            }
+
+            attemptExamRepository.save(attemptExam);
+
+            // Redis에서 관련 데이터 삭제 (선택사항)
+            try {
+                String keyPattern = redisCacheService.createCompositeKey("attempt", attemptId.toString(), "*");
+                // Redis 키 삭제 로직 (실제 구현에서는 RedisTemplate의 delete 메서드 사용)
+                // redisCacheService.deleteByPattern(keyPattern);
+            } catch (Exception e) {
+                // Redis 삭제 실패는 무시 (DB 마이그레이션은 성공)
+                System.err.println("Redis 데이터 삭제 실패: " + e.getMessage());
+            }
+
+            return RedisMigrationResponse.builder()
+                    .attemptId(attemptId)
+                    .success(true)
+                    .message("Redis 데이터 DB 마이그레이션 성공")
+                    .migratedQuestions(migratedQuestions)
+                    .remainingTime(request.getRemainingTime())
+                    .completedAt(attemptExam.getCompletedAt().toString())
+                    .build();
+
+        } catch (Exception e) {
+            return RedisMigrationResponse.builder()
+                    .attemptId(attemptId)
+                    .success(false)
+                    .message("Redis 데이터 DB 마이그레이션 실패: " + e.getMessage())
+                    .migratedQuestions(0)
+                    .remainingTime(request.getRemainingTime())
+                    .completedAt(null)
+                    .build();
+        }
+    }
+
+}
