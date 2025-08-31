@@ -4,10 +4,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.pullit.common.constants.ServiceConstants;
 import com.pullit.common.dto.response.ApiResponse;
 import com.pullit.itemprocess.dto.request.ClovaRequest;
+import com.pullit.itemprocess.dto.request.ProcessedItemSaveRequest;
 import com.pullit.itemprocess.dto.response.ClovaResponse;
 import com.pullit.itemprocess.dto.response.MathpixResponse;
+import com.pullit.itemprocess.entity.ProcessedItem;
 import com.pullit.itemprocess.enums.OcrAreaCode;
 import com.pullit.itemprocess.service.OcrService;
+import com.pullit.itemprocess.service.ProcessedItemService;
+import com.pullit.common.s3.service.S3Service;
+import com.pullit.common.s3.enums.S3Directory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -31,6 +36,8 @@ import java.util.List;
 @RequestMapping("/api/item-process")
 public class itemProcessController {
     final private OcrService ocrService;
+    final private ProcessedItemService processedItemService;
+    final private S3Service s3Service;
 
     @Operation(
             summary = "OCR 이미지 변환",
@@ -104,6 +111,29 @@ public class itemProcessController {
         }
         log.info("resultText: {}", resultText);
         return ResponseEntity.ok(ApiResponse.success("OCR 결과", resultText));
+    }
+
+    @Operation(
+            summary = "처리된 문항 저장",
+            description = "OCR 처리 및 편집이 완료된 문항 정보를 저장합니다."
+    )
+    @PostMapping("/save-processed-item")
+    public ResponseEntity<ApiResponse<ProcessedItem>> saveProcessedItem(
+            @RequestBody ProcessedItemSaveRequest request) {
+        ProcessedItem savedItem = processedItemService.saveProcessedItem(request);
+        return ResponseEntity.ok(ApiResponse.success(savedItem, "문항 저장 완료"));
+    }
+
+    @Operation(
+            summary = "영역 이미지 업로드",
+            description = "OCR 처리를 위해 크롭된 영역 이미지를 S3에 업로드합니다."
+    )
+    @PostMapping(value = "/upload-area-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<String>> uploadAreaImage(
+            @Parameter(description = "크롭된 영역 이미지 파일", required = true)
+            @RequestParam MultipartFile file) {
+        var uploadResponse = s3Service.upload(file, S3Directory.OCR_IMAGES);
+        return ResponseEntity.ok(ApiResponse.success(uploadResponse.getPresignedUrl(), "이미지 업로드 완료"));
     }
 }
 
