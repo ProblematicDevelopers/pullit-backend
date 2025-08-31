@@ -16,6 +16,7 @@ public class ProcessedItemSaveRequest {
     private Long majorChapterId;
     private Long middleChapterId;
     private Long minorChapterId;
+    private Long topicChapterId;
     private String solution;
     private String explanation;
     private Long passageId;

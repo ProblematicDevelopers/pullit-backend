@@ -35,9 +35,8 @@ public class ProcessedItem extends BaseTimeEntity {
     @Column(name = "answer", nullable = false, columnDefinition = "TEXT")
     private String answer;
     
-    @Column(name = "score", nullable = false)
-    @Builder.Default
-    private Integer score = 1;
+    @Column(name = "score", nullable = true)
+    private Integer score;
     
     @Column(name = "major_chapter_id")
     private Long majorChapterId;
@@ -84,6 +83,6 @@ public class ProcessedItem extends BaseTimeEntity {
     
     public boolean isComplete() {
         return type != null && difficulty != null && answer != null && 
-               !answer.trim().isEmpty() && score > 0 && majorChapterId != null;
+               !answer.trim().isEmpty()  && majorChapterId != null;
     }
 }
