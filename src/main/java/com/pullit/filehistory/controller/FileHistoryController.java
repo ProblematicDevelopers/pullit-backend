@@ -6,6 +6,7 @@ import com.pullit.common.dto.response.ApiResponse;
 import com.pullit.filehistory.dto.FileHistoryDTO;
 import com.pullit.filehistory.dto.PdfImageDTO;
 import com.pullit.filehistory.dto.response.PdfProcessingResponse;
+import com.pullit.filehistory.entity.FileHistory;
 import com.pullit.filehistory.service.FileHistoryService;
 import com.pullit.filehistory.service.PdfProcessingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -90,6 +91,8 @@ public class FileHistoryController {
         return ResponseEntity.ok(ApiResponse.success(remainingUrls, "페이지가 삭제되었습니다."));
     }
 
+
+
     @Operation(summary = "파일 히스토리 목록 조회", description = "사용자의 파일 히스토리 목록을 페이지네이션으로 조회")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<FileHistoryDTO>>> getFileHistories(
@@ -124,5 +127,21 @@ public class FileHistoryController {
         
         return ResponseEntity.ok(ApiResponse.success(images, "파일 히스토리 이미지 목록 조회 완료"));
     }
+
+    @Operation(summary = "파일 히스토리 조회", description = "특정 파일 히스토리 정보 조회")
+    @GetMapping("/{fileHistoryId}")
+    public ResponseEntity<ApiResponse<FileHistoryDTO>> getFileHistory(
+            @Parameter(description = "파일 히스토리 ID", required = true)
+            @PathVariable Long fileHistoryId,
+            @AuthUser CustomUserDetails currentUser) {
+
+        log.info("File history request: fileHistoryId={}, userId={}",
+                fileHistoryId, currentUser.getUserId());
+
+        FileHistoryDTO fileHistory = fileHistoryService.getFileHistory(fileHistoryId, currentUser);
+
+        return ResponseEntity.ok(ApiResponse.success(fileHistory, "파일 히스토리 목록 조회 완료"));
+    }
+
 
 }

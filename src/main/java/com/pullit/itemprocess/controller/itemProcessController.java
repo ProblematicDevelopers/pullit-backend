@@ -3,6 +3,7 @@ package com.pullit.itemprocess.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.pullit.common.constants.ServiceConstants;
 import com.pullit.common.dto.response.ApiResponse;
+import com.pullit.filehistory.entity.OcrHistory;
 import com.pullit.itemprocess.dto.request.ClovaRequest;
 import com.pullit.itemprocess.dto.request.ProcessedItemSaveRequest;
 import com.pullit.itemprocess.dto.response.ClovaResponse;
@@ -28,6 +29,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @Slf4j
 @Tag(name = "Item Process API", description = "ocr 변환 API")
@@ -134,6 +138,63 @@ public class itemProcessController {
             @RequestParam MultipartFile file) {
         var uploadResponse = s3Service.upload(file, S3Directory.OCR_IMAGES);
         return ResponseEntity.ok(ApiResponse.success(uploadResponse.getPresignedUrl(), "이미지 업로드 완료"));
+    }
+
+    @Operation(
+            summary = "저장된 처리된 문항 목록 조회",
+            description = "저장된 처리된 문항들을 페이지네이션으로 조회합니다."
+    )
+    @GetMapping("/get-processed-items")
+    public ResponseEntity<ApiResponse<Page<ProcessedItem>>> getProcessedItems(
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "과목 코드 (선택사항)", example = "MA")
+            @RequestParam(required = false) String subjectCode) {
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ProcessedItem> items = processedItemService.getProcessedItems(pageable, subjectCode);
+        return ResponseEntity.ok(ApiResponse.success(items, "저장된 문항 목록 조회 완료"));
+    }
+
+    @Operation(
+            summary = "특정 문항의 상세 정보 조회",
+            description = "ID로 특정 처리된 문항의 상세 정보를 조회합니다."
+    )
+    @GetMapping("/get-processed-item/{id}")
+    public ResponseEntity<ApiResponse<ProcessedItem>> getProcessedItem(
+            @Parameter(description = "문항 ID", required = true)
+            @PathVariable Long id) {
+        
+        ProcessedItem item = processedItemService.getProcessedItemById(id);
+        return ResponseEntity.ok(ApiResponse.success(item, "문항 상세 조회 완료"));
+    }
+
+    @Operation(
+            summary = "특정 파일의 OCR 히스토리 조회",
+            description = "파일 ID로 해당 파일의 모든 OCR 처리 히스토리를 조회합니다."
+    )
+    @GetMapping("/get-ocr-history/{fileId}")
+    public ResponseEntity<ApiResponse<List<OcrHistory>>> getOcrHistory(
+            @Parameter(description = "PDF 파일 ID", required = true)
+            @PathVariable Long fileId) {
+        
+        List<OcrHistory> ocrHistories = processedItemService.getOcrHistoryByFileId(fileId);
+        return ResponseEntity.ok(ApiResponse.success(ocrHistories, "OCR 히스토리 조회 완료"));
+    }
+
+    @Operation(
+            summary = "파일의 완료된 OCR 영역 조회",
+            description = "파일 ID로 해당 파일에서 완료된 OCR 처리 영역들을 위치 정보와 함께 조회합니다."
+    )
+    @GetMapping("/get-completed-regions/{fileId}")
+    public ResponseEntity<ApiResponse<List<OcrHistory>>> getCompletedOcrRegions(
+            @Parameter(description = "PDF 파일 ID", required = true)
+            @PathVariable Long fileId) {
+        
+        List<OcrHistory> completedRegions = processedItemService.getCompletedOcrRegionsByFileId(fileId);
+        return ResponseEntity.ok(ApiResponse.success(completedRegions, "완료된 OCR 영역 조회 완료"));
     }
 }
 

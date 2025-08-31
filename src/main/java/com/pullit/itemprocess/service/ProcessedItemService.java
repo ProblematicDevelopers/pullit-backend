@@ -11,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -62,5 +65,50 @@ public class ProcessedItemService {
         }
         
         return savedItem;
+    }
+    
+    /**
+     * 저장된 처리된 문항들을 페이지네이션으로 조회
+     */
+    @Transactional(readOnly = true)
+    public Page<ProcessedItem> getProcessedItems(Pageable pageable, String subjectCode) {
+        log.info("저장된 문항 목록 조회 - page: {}, size: {}, subjectCode: {}", 
+                pageable.getPageNumber(), pageable.getPageSize(), subjectCode);
+        
+        if (subjectCode != null && !subjectCode.isEmpty()) {
+            // 과목 코드로 필터링 (필요시 추후 구현)
+            return processedItemRepository.findAll(pageable);
+        } else {
+            return processedItemRepository.findAll(pageable);
+        }
+    }
+    
+    /**
+     * ID로 특정 처리된 문항의 상세 정보 조회
+     */
+    @Transactional(readOnly = true)
+    public ProcessedItem getProcessedItemById(Long id) {
+        log.info("문항 상세 조회 - id: {}", id);
+        return processedItemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("ProcessedItem not found: " + id));
+    }
+    
+    /**
+     * 파일 ID로 해당 파일의 모든 OCR 처리 히스토리 조회
+     */
+    @Transactional(readOnly = true)
+    public List<OcrHistory> getOcrHistoryByFileId(Long fileId) {
+        log.info("OCR 히스토리 조회 - fileId: {}", fileId);
+        return ocrHistoryRepository.findByPdfImageId(fileId);
+    }
+    
+    /**
+     * 파일 ID로 해당 파일에서 완료된 OCR 처리 영역들을 위치 정보와 함께 조회
+     */
+    @Transactional(readOnly = true)
+    public List<OcrHistory> getCompletedOcrRegionsByFileId(Long fileId) {
+        log.info("완료된 OCR 영역 조회 - fileId: {}", fileId);
+        // 처리 완료된 OCR 히스토리만 조회 (editedText가 있는 것들)
+        return ocrHistoryRepository.findByPdfImageIdAndEditedTextIsNotNull(fileId);
     }
 }

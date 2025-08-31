@@ -47,6 +47,9 @@ public class ProcessedItem extends BaseTimeEntity {
     
     @Column(name = "minor_chapter_id")
     private Long minorChapterId;
+
+    @Column(name = "topic_chapter_id")
+    private Long topicChapterId;
     
     @Column(name = "solution", columnDefinition = "TEXT")
     private String solution;

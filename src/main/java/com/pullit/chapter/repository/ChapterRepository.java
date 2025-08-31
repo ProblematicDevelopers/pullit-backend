@@ -20,4 +20,5 @@ public interface ChapterRepository extends JpaRepository<Chapter, Integer> {
     @Query(value = "SELECT * FROM chapters WHERE subject_id = :subjectId", nativeQuery = true)
     List<Chapter> findChaptersBySubjectIdNative(@Param("subjectId") Long subjectId);
 
+    String findNameById(Long id);
 }
