@@ -1,6 +1,8 @@
 package com.pullit.filehistory.entity;
 
 import com.pullit.item.entity.ItemMetadata;
+import com.pullit.itemprocess.entity.ProcessedItem;
+import com.pullit.itemprocess.enums.AreaType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +28,25 @@ public class OcrHistory {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_id")
     private ItemMetadata itemMetadata;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "processed_item_id")
+    private ProcessedItem processedItem;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "area_type", length = 20)
+    private AreaType areaType;
+
+    @Lob
+    @Column(name = "ocr_text", columnDefinition = "TEXT")
+    private String ocrText;
+
+    @Lob
+    @Column(name = "edited_text", columnDefinition = "TEXT")
+    private String editedText;
+
+    @Column(name = "original_image_url", length = 500)
+    private String originalImageUrl;
 
     @Column(name = "position_x")
     private String positionX;

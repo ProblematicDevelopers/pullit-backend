@@ -48,7 +48,7 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long>, Query
      */
     List<UserExam> findByClassIdAndVisibilityAndExamDateGreaterThanEqualOrderByExamDateAsc(Long classId, ExamVisibility visibility, LocalDate examDate);
 
-    UserExam findByIdAndClassId(Long examId, Long classId);
+    Optional<UserExam> findByIdAndClassId(Long examId, Long classId);
 
     /**
      * 생성자 ID로 검색 (삭제된 것 제요)
