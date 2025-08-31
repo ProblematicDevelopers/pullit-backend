@@ -2,6 +2,7 @@ package com.pullit.student.entity;
 
 import com.pullit.common.entity.BaseTimeEntity;
 import com.pullit.user.entity.User;
+import com.pullit.classes.entity.School;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,6 +32,10 @@ public class Student extends BaseTimeEntity {
 
     @Column
     private Long grade;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="school_id")
+    private School school;
 
 
 }

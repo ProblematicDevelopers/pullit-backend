@@ -15,12 +15,22 @@ import com.pullit.cbt.repository.AttemptExamRepository;
 import com.pullit.item.dao.ItemHtmlDataRepository;
 import com.pullit.item.dao.ItemMetadataRepository;
 import com.pullit.classes.dto.request.LiveExamAttemptRequest;
+import com.pullit.classes.dto.request.ClassCreateRequest;
+import com.pullit.classes.dto.request.ClassJoinRequest;
+import com.pullit.classes.dto.request.StudentInvitationRequest;
+import com.pullit.classes.dto.response.ClassCreateResponse;
 import com.pullit.classes.dto.response.ClassDetailResponse;
 import com.pullit.classes.dto.response.LiveExamAttemptResponse;
 import com.pullit.classes.dto.response.StudentInfoResponse;
+import com.pullit.classes.dto.response.StudentInvitationResponse;
 import com.pullit.classes.dto.response.TeacherInfoResponse;
+import com.pullit.classes.entity.ClassInvitation;
 import com.pullit.classes.entity.Classes;
+import com.pullit.classes.repository.ClassInvitationRepository;
 import com.pullit.classes.repository.ClassRepository;
+import com.pullit.common.embedded.StringCodeNamePair;
+import com.pullit.common.exception.BusinessException;
+import com.pullit.common.exception.ErrorCode;
 import com.pullit.exam.dto.response.UserExamSchoolResponse;
 import com.pullit.exam.entity.UserExam;
 import com.pullit.exam.entity.UserExamItem;
@@ -32,6 +42,7 @@ import com.pullit.teacher.entity.Teacher;
 import com.pullit.teacher.repository.TeacherRepository;
 import com.pullit.user.dto.response.UserResponse;
 import com.pullit.user.entity.User;
+import com.pullit.user.entity.UserRole;
 import com.pullit.user.repository.UserRepository;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,8 +52,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,6 +64,12 @@ import java.util.stream.Collectors;
 @Tag(name = "Classes", description = "클래스 API")
 public class ClassesServiceImpl implements ClassesService {
 
+    private final ClassRepository classRepository;
+    private final StudentRepository studentRepository;
+    private final TeacherRepository teacherRepository;
+    private final UserExamRepository userExamRepository;
+    private final UserRepository userRepository;
+    private final ClassInvitationRepository classInvitationRepository;
         private final ClassRepository classRepository;
         private final StudentRepository studentRepository;
         private final TeacherRepository teacherRepository;
@@ -72,6 +91,33 @@ public class ClassesServiceImpl implements ClassesService {
 
                 return convertToClassDetailResponse(classEntity);
         }
+    @Override
+    @Operation(summary = "클래스 ID로 특정 클래스의 상세 정보를 조회", description = "클래스 ID로 특정 클래스의 상세 정보를 조회")
+    public ClassDetailResponse getClassDetailById(Long userId) {
+        log.info("Getting class detail for user ID: {}", userId);
+
+        // 먼저 학생 정보를 조회
+        Student userStudent = studentRepository.findByUserId(userId);
+
+        // 학생 정보가 없으면 null 반환 또는 예외 처리
+        if (userStudent == null) {
+            log.warn("No student found for user ID: {}", userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND, "학생 정보를 찾을 수 없습니다.");
+        }
+
+        Long classId = userStudent.getClassGroupID();
+
+        // 학생이 클래스에 속해있지 않은 경우
+        if (classId == null) {
+            log.info("Student {} is not enrolled in any class", userId);
+            return null; // 또는 빈 응답 반환
+        }
+
+        Classes classEntity = classRepository.findById(classId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다. ID: " + classId));
+
+        return convertToClassDetailResponse(classEntity);
+    }
 
         @Override
         public List<UserExamSchoolResponse> getExamsByClassId(Long classId) {
@@ -365,6 +411,26 @@ public class ClassesServiceImpl implements ClassesService {
                 return null;
         }
 
+    private ClassDetailResponse convertToClassDetailResponse(Classes classEntity) {
+        // 담당 교사 정보 조회
+        TeacherInfoResponse teacherInfo = getTeacherInfo(classEntity.getTeacherId());
+        
+        // 클래스에 속한 학생들 정보 조회 (임시로 빈 리스트 반환)
+        List<StudentInfoResponse> students = getStudentsInClass(classEntity.getClassId());
+        
+        return ClassDetailResponse.builder()
+                .classId(classEntity.getClassId())
+                .className(classEntity.getClassName())
+                .classGrade(classEntity.getClassGrade() != null ? classEntity.getClassGrade().getCode() : null)
+                .classSubject(classEntity.getClassSubject() != null ? classEntity.getClassSubject().getCode() : null)
+                .createdDate(classEntity.getCreatedDate())
+                .updatedDate(classEntity.getUpdatedDate())
+                .teacher(teacherInfo)
+                .students(students)
+                .totalStudents((long) students.size())
+                .totalTeachers(1L)
+                .build();
+    }
         private ClassDetailResponse convertToClassDetailResponse(Classes classEntity) {
                 // 담당 교사 정보 조회
                 TeacherInfoResponse teacherInfo = getTeacherInfo(classEntity.getTeacherId());
@@ -414,6 +480,447 @@ public class ClassesServiceImpl implements ClassesService {
                 return studentInfoResponses;
         }
 
+    private TeacherInfoResponse getTeacherInfo(Long teacherId) {
+        if (teacherId == null) {
+            return null;
+        }
+        
+        Teacher teacher = teacherRepository.findByUserIdWithUser(teacherId)
+                .orElse(null);
+        
+        if (teacher == null) {
+            log.warn("Teacher not found for ID: {}", teacherId);
+            return null;
+        }
+        
+        return TeacherInfoResponse.builder()
+                .teacherId(teacher.getUserId())
+                .teacherName(teacher.getUser().getFullName())
+                .email(teacher.getUser().getEmail())
+                .phoneNumber(teacher.getUser().getPhone())
+                .subject(teacher.getAreaDisplayName())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public ClassCreateResponse createClass(ClassCreateRequest request, Long teacherId) {
+        // 1. StringCodeNamePair 생성
+        StringCodeNamePair gradePair = StringCodeNamePair.builder()
+            .code(request.getClassGrade())
+            .name(getGradeName(request.getClassGrade()))
+            .build();
+
+        StringCodeNamePair subjectPair = StringCodeNamePair.builder()
+            .code(request.getClassSubject())
+            .name(getSubjectName(request.getClassSubject()))
+            .build();
+
+        // 2. Classes 엔티티 생성
+        Classes newClass = Classes.builder()
+            .teacherId(teacherId)
+            .className(request.getClassName())
+            .classGrade(gradePair)
+            .classSubject(subjectPair)
+            .build();
+
+        Classes savedClass = classRepository.save(newClass);
+
+        // 2. 초대 코드 생성
+        String inviteCode = null;
+        if (request.getGenerateInviteCode()) {
+            inviteCode = generateUniqueInviteCode();
+
+            ClassInvitation invitation = ClassInvitation.builder()
+                .classId(savedClass.getClassId())
+                .inviteCode(inviteCode)
+                .expiresAt(LocalDateTime.now().plusDays(30))
+                .createdBy(teacherId)
+                .build();
+
+            classInvitationRepository.save(invitation);
+        }
+
+        // 3. Teacher 정보 조회
+        Teacher teacher = teacherRepository.findByUserIdWithUser(teacherId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND, "선생님 정보를 찾을 수 없습니다"));
+
+        // 4. 응답 생성
+        return ClassCreateResponse.builder()
+            .classId(savedClass.getClassId())
+            .className(savedClass.getClassName())
+            .classGrade(savedClass.getClassGrade().getCode())
+            .classSubject(savedClass.getClassSubject().getCode())
+            .classSubjectName(savedClass.getClassSubject().getName())
+            .inviteCode(inviteCode)
+            .createdDate(savedClass.getCreatedDate())
+            .teacher(ClassCreateResponse.TeacherInfo.builder()
+                .userId(teacher.getUserId())
+                .fullName(teacher.getUser().getFullName())
+                .email(teacher.getUser().getEmail())
+                .schoolName(teacher.getSchool() != null ? teacher.getSchool().getSchoolName() : null)
+                .build())
+            .build();
+    }
+
+    @Override
+    @Transactional
+    public StudentInvitationResponse inviteStudents(Long classId, StudentInvitationRequest request, Long teacherId) {
+        // 1. 학급 존재 확인
+        Classes classEntity = classRepository.findById(classId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, "학급을 찾을 수 없습니다"));
+
+        // 2. 초대 결과 리스트
+        List<StudentInvitationResponse.InvitationResult> results = new ArrayList<>();
+        int successCount = 0;
+        int failedCount = 0;
+
+        // 3. 각 학생 초대 처리
+        for (StudentInvitationRequest.StudentInviteInfo studentInfo : request.getStudents()) {
+            try {
+                // 이메일로 사용자 찾기
+                User user = userRepository.findByEmail(studentInfo.getEmail())
+                    .orElse(null);
+
+                if (user == null) {
+                    results.add(StudentInvitationResponse.InvitationResult.builder()
+                        .email(studentInfo.getEmail())
+                        .success(false)
+                        .message("사용자를 찾을 수 없습니다")
+                        .status(StudentInvitationResponse.InvitationStatus.USER_NOT_FOUND)
+                        .build());
+                    failedCount++;
+                    continue;
+                }
+
+                // 학생 권한 확인
+                if (user.getRole() != UserRole.STUDENT) {
+                    results.add(StudentInvitationResponse.InvitationResult.builder()
+                        .email(studentInfo.getEmail())
+                        .success(false)
+                        .message("학생 계정이 아닙니다")
+                        .status(StudentInvitationResponse.InvitationStatus.NOT_STUDENT)
+                        .build());
+                    failedCount++;
+                    continue;
+                }
+
+                // 학생 정보 조회
+                Student student = studentRepository.findByUserId(user.getId());
+                if (student == null) {
+                    // 학생 레코드가 없으면 생성
+                    student = Student.builder()
+                        .userId(user.getId())
+                        .user(user)
+                        .build();
+                    student = studentRepository.save(student);
+                }
+
+                // 이미 학급에 속해있는지 확인
+                if (student.getClassGroupID() != null) {
+                    if (student.getClassGroupID().equals(classId)) {
+                        results.add(StudentInvitationResponse.InvitationResult.builder()
+                            .email(studentInfo.getEmail())
+                            .success(false)
+                            .message("이미 이 학급의 멤버입니다")
+                            .status(StudentInvitationResponse.InvitationStatus.ALREADY_MEMBER)
+                            .build());
+                    } else {
+                        results.add(StudentInvitationResponse.InvitationResult.builder()
+                            .email(studentInfo.getEmail())
+                            .success(false)
+                            .message("이미 다른 학급에 속해있습니다")
+                            .status(StudentInvitationResponse.InvitationStatus.ERROR)
+                            .build());
+                    }
+                    failedCount++;
+                    continue;
+                }
+
+                // 학급에 추가
+                student.setClassGroupID(classId);
+                if (studentInfo.getStudentNo() != null) {
+                    student.setStudentNo(studentInfo.getStudentNo());
+                } else {
+                    Long maxStudentNo = studentRepository.findMaxStudentNoByClassId(classId)
+                        .orElse(0L);
+                    student.setStudentNo(maxStudentNo + 1);
+                }
+                // 학년 코드를 숫자로 변환 (07 -> 1, 08 -> 2, 09 -> 3)
+                Long gradeNumber = convertGradeCodeToNumber(classEntity.getClassGrade().getCode());
+                student.setGrade(gradeNumber);
+                studentRepository.save(student);
+
+                results.add(StudentInvitationResponse.InvitationResult.builder()
+                    .email(studentInfo.getEmail())
+                    .success(true)
+                    .message("초대가 완료되었습니다")
+                    .status(StudentInvitationResponse.InvitationStatus.SENT)
+                    .build());
+                successCount++;
+
+            } catch (Exception e) {
+                log.error("학생 초대 중 오류 발생: {}", studentInfo.getEmail(), e);
+                results.add(StudentInvitationResponse.InvitationResult.builder()
+                    .email(studentInfo.getEmail())
+                    .success(false)
+                    .message("초대 중 오류가 발생했습니다")
+                    .status(StudentInvitationResponse.InvitationStatus.ERROR)
+                    .build());
+                failedCount++;
+            }
+        }
+
+        return StudentInvitationResponse.builder()
+            .classId(classId)
+            .className(classEntity.getClassName())
+            .totalInvited(request.getStudents().size())
+            .successCount(successCount)
+            .failedCount(failedCount)
+            .results(results)
+            .build();
+    }
+
+    @Override
+    @Transactional
+    public ClassDetailResponse joinClassByInviteCode(ClassJoinRequest request, Long studentId) {
+        // 1. 초대 코드 유효성 확인
+        ClassInvitation invitation = classInvitationRepository
+            .findActiveByInviteCode(request.getInviteCode())
+            .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT, "유효하지 않은 초대 코드입니다"));
+
+        if (!invitation.isUsable()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "만료되었거나 사용할 수 없는 초대 코드입니다");
+        }
+
+        // 2. 학생 정보 조회
+        Student student = studentRepository.findByUserId(studentId);
+        if (student == null) {
+            // 학생 레코드가 없으면 생성
+            User user = userRepository.findById(studentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND, "사용자를 찾을 수 없습니다"));
+
+            student = Student.builder()
+                .userId(studentId)
+                .user(user)
+                .build();
+            student = studentRepository.save(student);
+        }
+
+        if (student.getClassGroupID() != null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "이미 다른 학급에 소속되어 있습니다");
+        }
+
+        // 3. 학급 정보 조회
+        Classes classEntity = classRepository.findById(invitation.getClassId())
+            .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, "학급을 찾을 수 없습니다"));
+
+        // 4. 학생의 classGroupID 업데이트
+        student.setClassGroupID(invitation.getClassId());
+        // 학년 코드를 숫자로 변환 (07 -> 1, 08 -> 2, 09 -> 3)
+        if (classEntity.getClassGrade() != null && classEntity.getClassGrade().getCode() != null) {
+            Long gradeNumber = convertGradeCodeToNumber(classEntity.getClassGrade().getCode());
+            student.setGrade(gradeNumber);
+        }
+
+        // 학번 설정
+        if (request.getStudentNo() != null) {
+            student.setStudentNo(request.getStudentNo());
+        } else {
+            Long maxStudentNo = studentRepository.findMaxStudentNoByClassId(invitation.getClassId())
+                .orElse(0L);
+            student.setStudentNo(maxStudentNo + 1);
+        }
+
+        studentRepository.save(student);
+
+        // 5. 초대 코드 사용 횟수 증가
+        invitation.incrementUsage();
+        classInvitationRepository.save(invitation);
+
+        // 6. 학급 상세 정보 반환
+        return convertToClassDetailResponse(classEntity);
+    }
+
+    @Override
+    @Transactional
+    public String regenerateInviteCode(Long classId, Long teacherId) {
+        // 1. 기존 초대 코드 비활성화
+        classInvitationRepository.deactivateAllByClassId(classId);
+
+        // 2. 새로운 초대 코드 생성
+        String newInviteCode = generateUniqueInviteCode();
+
+        ClassInvitation invitation = ClassInvitation.builder()
+            .classId(classId)
+            .inviteCode(newInviteCode)
+            .expiresAt(LocalDateTime.now().plusDays(30))
+            .createdBy(teacherId)
+            .isActive(true)
+            .build();
+
+        classInvitationRepository.save(invitation);
+
+        return newInviteCode;
+    }
+
+    @Override
+    @Transactional
+    public void removeStudentFromClass(Long classId, Long studentId) {
+        Student student = studentRepository.findByUserId(studentId);
+        if (student == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND, "학생을 찾을 수 없습니다");
+        }
+
+        if (!classId.equals(student.getClassGroupID())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "해당 학생은 이 학급의 멤버가 아닙니다");
+        }
+
+        student.setClassGroupID(null);
+        student.setStudentNo(null);
+        studentRepository.save(student);
+    }
+
+    @Override
+    public boolean isClassMember(Long classId, Long userId) {
+        Student student = studentRepository.findByUserId(userId);
+        return student != null && classId.equals(student.getClassGroupID());
+    }
+
+    @Override
+    public boolean isClassOwner(Long classId, Long teacherId) {
+        return classRepository.findById(classId)
+            .map(c -> c.getTeacherId().equals(teacherId))
+            .orElse(false);
+    }
+
+    @Override
+    public String generateUniqueInviteCode() {
+        SecureRandom random = new SecureRandom();
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        int length = 8;
+
+        String code;
+        do {
+            StringBuilder sb = new StringBuilder(length);
+            for (int i = 0; i < length; i++) {
+                sb.append(characters.charAt(random.nextInt(characters.length())));
+            }
+            code = sb.toString();
+        } while (classInvitationRepository.existsByInviteCode(code));
+
+        return code;
+    }
+
+    private String getSubjectName(String subjectCode) {
+        Map<String, String> subjectMap = new HashMap<>();
+        // DB 코드 매핑
+        subjectMap.put("KO", "국어");
+        subjectMap.put("MA", "수학");
+        subjectMap.put("EN", "영어");
+        subjectMap.put("SC", "과학");
+        subjectMap.put("SO", "사회");
+
+        return subjectMap.getOrDefault(subjectCode, subjectCode);
+    }
+
+    private String getGradeName(String gradeCode) {
+        Map<String, String> gradeMap = new HashMap<>();
+        // DB 코드 매핑
+        gradeMap.put("07", "1학년");
+        gradeMap.put("08", "2학년");
+        gradeMap.put("09", "3학년");
+
+        return gradeMap.getOrDefault(gradeCode, gradeCode);
+    }
+
+    private Long convertGradeCodeToNumber(String gradeCode) {
+        // 학년 코드를 숫자로 변환 (07 -> 1, 08 -> 2, 09 -> 3)
+        switch (gradeCode) {
+            case "07": return 1L;
+            case "08": return 2L;
+            case "09": return 3L;
+            default: return 1L;
+        }
+    }
+
+    @Override
+    public List<StudentInfoResponse> getAvailableStudentsInSameSchool(Long teacherId, String search, Long grade) {
+        // 1. 선생님의 학교 정보 조회
+        Teacher teacher = teacherRepository.findByUserIdWithUser(teacherId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND, "선생님 정보를 찾을 수 없습니다"));
+
+        if (teacher.getSchool() == null) {
+            return new ArrayList<>();
+        }
+
+        Long schoolId = teacher.getSchool().getId();
+
+        // 2. 같은 학교의 학생 조회 (학급 미배정 학생만)
+        List<Student> availableStudents;
+        if (grade != null) {
+            availableStudents = studentRepository.findBySchoolIdAndGradeAndClassGroupIDIsNull(schoolId, grade);
+        } else {
+            availableStudents = studentRepository.findBySchoolIdAndClassGroupIDIsNull(schoolId);
+        }
+
+        // 3. StudentInfoResponse로 변환 및 필터링
+        return availableStudents.stream()
+            .map(student -> {
+                User user = student.getUser();
+                if (user == null) {
+                    user = userRepository.findById(student.getUserId()).orElse(null);
+                }
+
+                if (user == null) return null;
+
+                // 검색 조건 필터링
+                if (search != null && !search.isEmpty()) {
+                    String searchLower = search.toLowerCase();
+                    if (!user.getFullName().toLowerCase().contains(searchLower) &&
+                        !user.getEmail().toLowerCase().contains(searchLower)) {
+                        return null;
+                    }
+                }
+
+                return StudentInfoResponse.builder()
+                    .studentId(student.getUserId())
+                    .studentName(user.getFullName())
+                    .email(user.getEmail())
+                    .phoneNumber(user.getPhone())
+                    .grade(student.getGrade())
+                    .studentNumber(student.getStudentNo() != null ? student.getStudentNo().toString() : "")
+                    .enrolledDate(student.getCreatedDate() != null ? student.getCreatedDate().toLocalDate() : null)
+                    .status("AVAILABLE")
+                    .build();
+            })
+            .filter(response -> response != null)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public String getOrCreateInviteCode(Long classId, Long teacherId) {
+        // 1. 기존 활성 초대 코드 조회
+        Optional<ClassInvitation> existingInvitation = classInvitationRepository
+            .findByClassIdAndIsActiveTrue(classId);
+
+        if (existingInvitation.isPresent() && existingInvitation.get().isUsable()) {
+            return existingInvitation.get().getInviteCode();
+        }
+
+        // 2. 기존 코드가 없거나 만료되었으면 새로 생성
+        return regenerateInviteCode(classId, teacherId);
+    }
+
+    @Override
+    public Optional<Long> getFirstTeacherId() {
+        // 데이터베이스에서 첫 번째 teacher를 조회
+        List<Teacher> teachers = teacherRepository.findAll();
+        if (!teachers.isEmpty()) {
+            return Optional.of(teachers.get(0).getUserId());
+        }
+        return Optional.empty();
+    }
         private TeacherInfoResponse getTeacherInfo(Long teacherId) {
                 if (teacherId == null) {
                         return null;

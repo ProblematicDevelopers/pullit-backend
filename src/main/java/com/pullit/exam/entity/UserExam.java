@@ -1,6 +1,7 @@
 package com.pullit.exam.entity;
 
 import com.pullit.common.entity.FullAuditEntity;
+import com.pullit.common.s3.dto.S3UploadResponse;
 import com.pullit.exam.enums.ExamVisibility;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name="user_exams")
+@Table(name = "user_exams")
 @Getter
 @Setter
 @Builder
@@ -22,7 +23,7 @@ import java.util.List;
 public class UserExam extends FullAuditEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name="exam_id")
+    @Column(name = "exam_id")
     private Long id;
 
     @Column(name = "exam_name", nullable = false, length = 500)
@@ -72,26 +73,47 @@ public class UserExam extends FullAuditEntity {
 
     @Column(name = "deleted_by")
     private Long deletedBy;
-    
+
     // PDF 관련 필드 추가
     @Column(name = "pdf_url", length = 500)
     private String pdfUrl;
-    
+
     @Column(name = "answer_pdf_url", length = 500)
     private String answerPdfUrl;
-    
+
     @Column(name = "pdf_generated_at")
     private LocalDateTime pdfGeneratedAt;
-    
+
     // 시험 추가 정보
     @Column(name = "time_limit")
     private Integer timeLimit;  // 시험 시간(분)
-    
+
     @Column(name = "exam_date")
     private LocalDate examDate;  // 시험 예정일
-    
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;  // 시험 설명
+
+    @Column(name = "pdf_s3_key", length = 500)
+    private String pdfS3Key;
+
+    @Column(name = "pdf_file_name", length = 255)
+    private String pdfFileName;
+
+    @Column(name ="pdf_file_size")
+    private Long pdfFileSize;
+
+    @Column(name="pdf_content_type", length = 500)
+    private String pdfContentType;
+
+    @Column(name = "answer_pdf_s3_key", length = 500)
+    private String answerPdfS3Key;
+
+    @Column(name = "answer_pdf_file_name", length = 255)
+    private String answerPdfFileName;
+
+    @Column(name = "answer_pdf_file_size")
+    private Long answerPdfFileSize;
 
     @OneToMany(mappedBy = "userExam", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("itemOrder ASC")
@@ -128,23 +150,33 @@ public class UserExam extends FullAuditEntity {
         this.deletedDate = null;
         this.deletedBy = null;
     }
-    
+
     // PDF 관련 메서드 추가
     public void updatePdfUrl(String pdfUrl) {
         this.pdfUrl = pdfUrl;
         this.pdfGeneratedAt = LocalDateTime.now();
     }
-    
+
     public void updateAnswerPdfUrl(String answerPdfUrl) {
         this.answerPdfUrl = answerPdfUrl;
     }
-    
+
     public boolean hasPdf() {
         return pdfUrl != null && !pdfUrl.isEmpty();
     }
-    
+
     public boolean hasAnswerPdf() {
         return answerPdfUrl != null && !answerPdfUrl.isEmpty();
+    }
+
+    public void updatePdfMetadata(S3UploadResponse response) {
+        this.pdfUrl = response.getPublicUrl() != null ?
+                response.getPublicUrl() : response.getPresignedUrl();
+        this.pdfS3Key = response.getS3Key();
+        this.pdfFileName = response.getFileName();
+        this.pdfFileSize = response.getFileSize();
+        this.pdfContentType = response.getContentType();
+        this.pdfGeneratedAt = LocalDateTime.now();
     }
 
 }

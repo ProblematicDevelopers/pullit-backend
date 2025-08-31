@@ -12,8 +12,8 @@ import java.util.List;
 public class ClassDetailResponse {
     private Long classId;
     private String className;
-    private Long classGrade;
-    private String classSubject;
+    private String classGrade;  // DB 코드 사용: 07, 08, 09
+    private String classSubject;  // DB 코드 사용: MA, KO, EN, SC, SO
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
     
