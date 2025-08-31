@@ -39,8 +39,6 @@ public class OnlineStatusService {
     private static final long EXAM_STATUS_TTL = 7200; // 2시간 (시험 상태는 더 오래 유지)
 
     public void updateUserStatus(OnlineStatusRequest request) {
-        log.info("Updating user status: userId={}, channelName={}, status={}",
-                request.getUserId(), request.getChannelName(), request.getStatus());
 
         // null 체크
         if (request == null || request.getChannelName() == null || request.getUserId() == null) {
@@ -76,15 +74,12 @@ public class OnlineStatusService {
             redisTemplate.opsForSet().add(CHANNEL_LIST_KEY, channelName);
             redisTemplate.expire(CHANNEL_LIST_KEY, CHANNEL_TTL, TimeUnit.SECONDS);
 
-            log.info("User status updated in Redis: {}", userInfo);
-
         } catch (Exception e) {
             log.error("Failed to update user status in Redis: userId={}, channelName={}", userId, channelName, e);
         }
     }
 
     public void removeUserFromClass(String channelName, Long userId) {
-        log.info("Removing user from class: userId={}, channelName={}", userId, channelName);
 
         // null 체크
         if (channelName == null || userId == null) {
@@ -107,15 +102,12 @@ public class OnlineStatusService {
                 redisTemplate.delete(channelUsersKey);
             }
 
-            log.info("User removed from Redis: userId={}, channelName={}", userId, channelName);
-
         } catch (Exception e) {
             log.error("Failed to remove user from Redis: userId={}, channelName={}", userId, channelName, e);
         }
     }
 
     public OnlineStatusResponse getClassOnlineStatus(String channelName) {
-        log.info("Getting online status for class: {}", channelName);
 
         // null 체크
         if (channelName == null) {
@@ -230,8 +222,6 @@ public class OnlineStatusService {
                         // 사용자 정보가 없으면 채널에서 제거
                         if (!redisTemplate.hasKey(userInfoKey)) {
                             redisTemplate.opsForSet().remove(channelUsersKey, userId);
-                            log.info("Removed expired user from channel: userId={}, channelName={}", userId,
-                                    channelName);
                         }
                     }
 
@@ -239,7 +229,6 @@ public class OnlineStatusService {
                     if (getOnlineUserCount(channelName) == 0) {
                         redisTemplate.opsForSet().remove(CHANNEL_LIST_KEY, channelName);
                         redisTemplate.delete(channelUsersKey);
-                        log.info("Removed empty channel: {}", channelName);
                     }
                 }
             }
@@ -263,7 +252,6 @@ public class OnlineStatusService {
      * 시험 상태 업데이트 (간소화)
      */
     public void updateExamStatus(String channelName, String status) {
-        log.info("Updating exam status: channelName={}, status={}", channelName, status);
 
         // null 체크
         if (channelName == null || status == null) {
@@ -283,8 +271,6 @@ public class OnlineStatusService {
             String examStatusKey = String.format(EXAM_STATUS_KEY_PATTERN, channelName);
             redisTemplate.opsForValue().set(examStatusKey, examStatusInfo, EXAM_STATUS_TTL, TimeUnit.SECONDS);
 
-            log.info("Exam status updated in Redis: {}", examStatusInfo);
-
         } catch (Exception e) {
             log.error("Failed to update exam status in Redis: channelName={}", channelName, e);
         }
@@ -294,7 +280,6 @@ public class OnlineStatusService {
      * 시험 상태 조회 (간소화)
      */
     public String getExamStatus(String channelName) {
-        log.info("Getting exam status for channelName: {}", channelName);
 
         // null 체크
         if (channelName == null) {
@@ -307,10 +292,8 @@ public class OnlineStatusService {
             ExamStatusInfo examStatusInfo = (ExamStatusInfo) redisTemplate.opsForValue().get(examStatusKey);
 
             if (examStatusInfo != null) {
-                log.info("Exam status found: {}", examStatusInfo);
                 return examStatusInfo.getStatus();
             } else {
-                log.info("No exam status found for channel: {}", channelName);
                 return null;
             }
 
@@ -324,7 +307,6 @@ public class OnlineStatusService {
      * 시험 상태 제거
      */
     public void removeExamStatus(String channelName) {
-        log.info("Removing exam status: channelName={}", channelName);
 
         // null 체크
         if (channelName == null) {
@@ -335,7 +317,6 @@ public class OnlineStatusService {
         try {
             String examStatusKey = String.format(EXAM_STATUS_KEY_PATTERN, channelName);
             redisTemplate.delete(examStatusKey);
-            log.info("Exam status removed from Redis: channelName={}", channelName);
 
         } catch (Exception e) {
             log.error("Failed to remove exam status from Redis: channelName={}", channelName, e);
@@ -346,7 +327,6 @@ public class OnlineStatusService {
      * 시험 진행 상황 업데이트
      */
     public void updateExamProgress(ExamProgressRequest request) {
-        log.info("Updating exam progress: {}", request);
 
         // null 체크
         if (request == null || request.getChannelName() == null || request.getUserId() == null) {
@@ -394,9 +374,6 @@ public class OnlineStatusService {
             String examProgressKey = String.format(EXAM_PROGRESS_KEY_PATTERN, request.getChannelName());
             redisTemplate.opsForValue().set(examProgressKey, existingProgress, EXAM_STATUS_TTL, TimeUnit.SECONDS);
 
-            log.info("Exam progress updated in Redis: channelName={}, userId={}", request.getChannelName(),
-                    request.getUserId());
-
         } catch (Exception e) {
             log.error("Failed to update exam progress in Redis: channelName={}", request.getChannelName(), e);
         }
@@ -406,7 +383,6 @@ public class OnlineStatusService {
      * 시험 진행 상황 조회 (Map 형태)
      */
     private Map<String, ExamProgressResponse.UserExamProgress> getExamProgressMap(String channelName) {
-        log.info("Getting exam progress map: channelName={}", channelName);
 
         // null 체크
         if (channelName == null) {
@@ -421,10 +397,8 @@ public class OnlineStatusService {
                     .opsForValue().get(examProgressKey);
 
             if (examProgress != null) {
-                log.info("Exam progress found: {}", examProgress);
                 return examProgress;
             } else {
-                log.info("No exam progress found for channel: {}", channelName);
                 return new java.util.HashMap<>();
             }
 
@@ -438,7 +412,6 @@ public class OnlineStatusService {
      * 시험 진행 상황 조회 (Response DTO 형태)
      */
     public ExamProgressResponse getExamProgress(String channelName) {
-        log.info("Getting exam progress response: channelName={}", channelName);
 
         // null 체크
         if (channelName == null) {
