@@ -5,6 +5,7 @@ import com.pullit.common.constants.ServiceConstants;
 import com.pullit.common.dto.response.ApiResponse;
 import com.pullit.filehistory.entity.OcrHistory;
 import com.pullit.itemprocess.dto.request.ClovaRequest;
+import com.pullit.itemprocess.dto.request.HtmlEditorPayload;
 import com.pullit.itemprocess.dto.request.ProcessedItemSaveRequest;
 import com.pullit.itemprocess.dto.response.ClovaResponse;
 import com.pullit.itemprocess.dto.response.MathpixResponse;
@@ -207,10 +208,11 @@ public class itemProcessController {
     @PostMapping("/publish/{processedItemId}")
     public ResponseEntity<ApiResponse<Long>> publishProcessedItem(
             @Parameter(description = "변환할 ProcessedItem ID", required = true)
-            @PathVariable Long processedItemId) {
-        
-        Long publishedItemId = processItemPublishService.publish(processedItemId);
-        return ResponseEntity.ok(ApiResponse.success(publishedItemId, "ProcessedItem 변환 완료"));
+            @PathVariable Long processedItemId,  @RequestBody(required = false) HtmlEditorPayload payload) {
+
+        Long newItemId = processItemPublishService.publish(processedItemId, payload);
+        return ResponseEntity.ok(ApiResponse.success(processedItemId, "ProcessedItem 변환 완료"));
     }
+
 }
 
