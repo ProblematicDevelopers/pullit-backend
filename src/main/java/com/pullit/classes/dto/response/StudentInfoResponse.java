@@ -1,20 +1,23 @@
 package com.pullit.classes.dto.response;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-@Data
+@Getter
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class StudentInfoResponse {
     private Long studentId;
     private String studentName;
     private String email;
     private String phoneNumber;
-    private Long grade; // 학년
-    private String studentNumber; // 학번
-    private LocalDate enrolledDate; // 수강 신청일
-    private String status; // ONLINE, OFFLINE, AWAY
+    private Long grade;
+    private String studentNumber;
+    private LocalDate enrolledDate;
+    private String status;  // AVAILABLE, ASSIGNED, etc.
 }

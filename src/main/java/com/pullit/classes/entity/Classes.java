@@ -1,6 +1,7 @@
 package com.pullit.classes.entity;
 
 import com.pullit.common.entity.BaseTimeEntity;
+import com.pullit.common.embedded.StringCodeNamePair;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,11 +28,19 @@ public class Classes extends BaseTimeEntity {
     @Column(name = "class_name", length = 100)
     private String className;
 
-    @Column(name = "class_grade")
-    private Long classGrade;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "code", column = @Column(name = "class_grade_code", length = 10)),
+            @AttributeOverride(name = "name", column = @Column(name = "class_grade_name", length = 20))
+    })
+    private StringCodeNamePair classGrade;  // 07(1학년), 08(2학년), 09(3학년)
 
-    @Column(name = "class_subject", length = 100)
-    private String classSubject;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "code", column = @Column(name = "class_subject_code", length = 10)),
+            @AttributeOverride(name = "name", column = @Column(name = "class_subject_name", length = 50))
+    })
+    private StringCodeNamePair classSubject;  // MA(수학), KO(국어), EN(영어), SC(과학), SO(사회)
 
     @OneToMany(mappedBy = "classes", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default

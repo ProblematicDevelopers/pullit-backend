@@ -58,6 +58,15 @@ public enum ErrorCode {
     RESOURCE_NOT_AVAILABLE("BIZ_003", "리소스를 사용할 수 없습니다.", HttpStatus.CONFLICT),
     INVALID_STATUS_TRANSITION("BIZ_004", "유효하지 않은 상태 변경입니다.", HttpStatus.BAD_REQUEST),
     QUOTA_EXCEEDED("BIZ_005", "할당량을 초과했습니다.", HttpStatus.TOO_MANY_REQUESTS),
+    
+    // ========== 시험 관련 에러 (EXAM) ==========
+    EXAM_NOT_FOUND("EXAM_001", "시험지를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    ITEM_NOT_FOUND("EXAM_002", "문항을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    ASSIGNMENT_NOT_FOUND("EXAM_003", "시험 출제 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    DUPLICATE_ASSIGNMENT("EXAM_004", "이미 출제된 시험입니다.", HttpStatus.CONFLICT),
+    INVALID_STATUS("EXAM_005", "유효하지 않은 시험 상태입니다.", HttpStatus.BAD_REQUEST),
+    CLASS_NOT_FOUND("EXAM_006", "학급을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    INVALID_REQUEST("EXAM_007", "유효하지 않은 요청입니다.", HttpStatus.BAD_REQUEST),
 
 
     // ========== 외부 API 관련 에러 (EXTERNAL) ==========

@@ -1,5 +1,6 @@
 package com.pullit.student.dto.response;
 
+import com.pullit.common.embedded.StringCodeNamePair;
 import lombok.*;
 
 @AllArgsConstructor
@@ -12,5 +13,5 @@ public class StudentResponse {
     private Long userId;
     private Long classGroupId;
     private Long studentNo;
-    private Long grade;
+    private StringCodeNamePair grade;
 }

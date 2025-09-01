@@ -1,7 +1,9 @@
 package com.pullit.student.entity;
 
+import com.pullit.common.embedded.StringCodeNamePair;
 import com.pullit.common.entity.BaseTimeEntity;
 import com.pullit.user.entity.User;
+import com.pullit.classes.entity.School;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,11 +18,11 @@ import lombok.*;
 public class Student extends BaseTimeEntity {
 
     @Id
+    @Column(name="user_id")
     private Long userId;
 
-    @OneToOne
-    @MapsId
-    @JoinColumn(name="user_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="user_id", insertable = false, updatable = false)
     private User user;
 
     @Column(name="class_group_id")
@@ -29,8 +31,19 @@ public class Student extends BaseTimeEntity {
     @Column(name = "student_no")
     private Long studentNo;
 
-    @Column
-    private Long grade;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "code", column = @Column(name = "grade_code", length = 10)),
+            @AttributeOverride(name = "name", column = @Column(name = "grade_name", length = 50))
+    })
+    private StringCodeNamePair grade;  // 학년 정보 (코드/이름)
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="school_id")
+    private School school;
 
+    public String getGradeDisplayName() {
+        return grade != null ? grade.getDisplayName() : "";
+    }
 
 }

@@ -14,6 +14,9 @@ public interface ClassRepository extends JpaRepository<Classes, Long> {
 
     // 교사 ID로 클래스 목록 조회
     List<Classes> findByTeacherId(Long teacherId);
+    
+    // 교사 ID로 첫 번째 클래스 조회 (교사가 하나의 클래스만 담당한다고 가정)
+    Optional<Classes> findFirstByTeacherId(Long teacherId);
 
     // 교사 ID와 클래스 ID로 클래스 조회
     Optional<Classes> findByTeacherIdAndClassId(Long teacherId, Long classId);

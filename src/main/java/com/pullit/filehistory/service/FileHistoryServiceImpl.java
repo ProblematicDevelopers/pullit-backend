@@ -62,7 +62,19 @@ public class FileHistoryServiceImpl implements FileHistoryService {
         // Page 객체를 DTO로 변환 (areaCode 필터링은 프론트엔드에서 처리)
         return fileHistories.map(FileHistoryDTO::from);
     }
-    
+
+    @Override
+    public FileHistoryDTO getFileHistory(Long fileHistoryId, CustomUserDetails currentUser) {
+        log.debug("getFileHistory: fileHistoryId={}, user={}", fileHistoryId, currentUser.getUsername());
+
+        FileHistory fileHistory = fileHistoryRepository.findById(fileHistoryId).orElse(null);
+        if (fileHistory == null) {
+            throw new BusinessException(ErrorCode.INVALID_BUSINESS_LOGIC);
+        }
+
+        return FileHistoryDTO.from(fileHistory);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<PdfImageDTO> getFileHistoryImages(Long fileHistoryId, CustomUserDetails currentUser) {

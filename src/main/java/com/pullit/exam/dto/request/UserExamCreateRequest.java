@@ -25,13 +25,17 @@ public class UserExamCreateRequest {
     private Integer timeLimit;
     private LocalDate examDate;
     private String description;
-    private List<UserExamItemRequest> items;
+    private String visibility;  // PRIVATE, PUBLIC, CLASS_ONLY
+    private Long classId;
+    private Boolean shuffleQuestions;
+    private Boolean showAnswerAfterSubmit;
+    private List<ExamItemRequest> items;
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class UserExamItemRequest {
+    public static class ExamItemRequest {
         private Long itemId;
         private Long subjectId;
         private Integer itemOrder;

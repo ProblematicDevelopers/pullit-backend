@@ -21,4 +21,24 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     // 학생 ID로 User 정보 조회
     @Query("SELECT u FROM User u WHERE u.id = :studentId")
     Optional<User> findUserByStudentId(@Param("studentId") Long studentId);
+    
+    // 추가 메서드들
+    Optional<Student> findByUserIdAndClassGroupID(Long userId, Long classGroupId);
+    
+    boolean existsByUserIdAndClassGroupID(Long userId, Long classGroupId);
+    
+    @Query("SELECT COUNT(s) FROM Student s WHERE s.classGroupID = :classId")
+    Long countByClassId(@Param("classId") Long classId);
+    
+    @Query("SELECT MAX(s.studentNo) FROM Student s WHERE s.classGroupID = :classId")
+    Optional<Long> findMaxStudentNoByClassId(@Param("classId") Long classId);
+    
+    // 학급 미배정 학생 조회
+    List<Student> findByClassGroupIDIsNull();
+    
+    // 학교별 학급 미배정 학생 조회
+    List<Student> findBySchoolIdAndClassGroupIDIsNull(Long schoolId);
+    
+    // 학교별 학급 미배정 학생 조회 (학년 필터링)
+    List<Student> findBySchoolIdAndGradeAndClassGroupIDIsNull(Long schoolId, Long grade);
 }
