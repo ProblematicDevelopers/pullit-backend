@@ -208,11 +208,11 @@ public class itemProcessController {
     @PostMapping("/publish/{processedItemId}")
     public ResponseEntity<ApiResponse<Long>> publishProcessedItem(
             @Parameter(description = "변환할 ProcessedItem ID", required = true)
-            @PathVariable Long processedItemId,  @RequestBody(required = false) HtmlEditorPayload payload) {
+            @PathVariable Long processedItemId,
+            @RequestBody(required = false) HtmlEditorPayload payload){ // ← 추가
 
-        Long newItemId = processItemPublishService.publish(processedItemId, payload);
-        return ResponseEntity.ok(ApiResponse.success(processedItemId, "ProcessedItem 변환 완료"));
+        Long publishedItemId = processItemPublishService.publish(processedItemId, payload);
+        return ResponseEntity.ok(ApiResponse.success(publishedItemId, "ProcessedItem 변환 완료"));
     }
-
 }
 
