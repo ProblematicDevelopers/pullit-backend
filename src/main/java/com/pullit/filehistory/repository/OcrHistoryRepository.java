@@ -19,4 +19,14 @@ public interface OcrHistoryRepository extends JpaRepository<OcrHistory, Long> {
     List<OcrHistory> findByPdfImageIdAndEditedTextIsNotNull(Long pdfImageId);
 
     List<OcrHistory> findByProcessedItemId(Long processedItemId);
+    
+    /**
+     * ProcessedItem ID와 AreaType으로 특정 OCR 히스토리 조회 (idempotent 처리용)
+     */
+    OcrHistory findByProcessedItemIdAndAreaType(Long processedItemId, com.pullit.itemprocess.enums.AreaType areaType);
+    
+    /**
+     * 특정 PDF 이미지의 임시 OCR 히스토리 조회 (processedItem이 null인 것들)
+     */
+    List<OcrHistory> findByPdfImageIdAndProcessedItemIsNull(Long pdfImageId);
 }
