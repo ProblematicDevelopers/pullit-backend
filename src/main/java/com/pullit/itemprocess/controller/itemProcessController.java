@@ -12,6 +12,7 @@ import com.pullit.itemprocess.entity.ProcessedItem;
 import com.pullit.itemprocess.enums.OcrAreaCode;
 import com.pullit.itemprocess.service.OcrService;
 import com.pullit.itemprocess.service.ProcessedItemService;
+import com.pullit.itemprocess.service.ProcessItemPublishService;
 import com.pullit.common.s3.service.S3Service;
 import com.pullit.common.s3.enums.S3Directory;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,6 +42,7 @@ import org.springframework.data.domain.Pageable;
 public class itemProcessController {
     final private OcrService ocrService;
     final private ProcessedItemService processedItemService;
+    final private ProcessItemPublishService processItemPublishService;
     final private S3Service s3Service;
 
     @Operation(
@@ -117,15 +119,16 @@ public class itemProcessController {
         return ResponseEntity.ok(ApiResponse.success("OCR 결과", resultText));
     }
 
+    record IdResponse(Long id) {}
     @Operation(
             summary = "처리된 문항 저장",
             description = "OCR 처리 및 편집이 완료된 문항 정보를 저장합니다."
     )
+
     @PostMapping("/save-processed-item")
-    public ResponseEntity<ApiResponse<ProcessedItem>> saveProcessedItem(
-            @RequestBody ProcessedItemSaveRequest request) {
-        ProcessedItem savedItem = processedItemService.saveProcessedItem(request);
-        return ResponseEntity.ok(ApiResponse.success(savedItem, "문항 저장 완료"));
+    public ResponseEntity<ApiResponse<IdResponse>> saveProcessedItem(@RequestBody ProcessedItemSaveRequest request) {
+        Long id = processedItemService.saveProcessedItemAndReturnId(request);
+        return ResponseEntity.ok(ApiResponse.success(new IdResponse(id), "문항 저장 성공"));
     }
 
     @Operation(
@@ -195,6 +198,19 @@ public class itemProcessController {
         
         List<OcrHistory> completedRegions = processedItemService.getCompletedOcrRegionsByFileId(fileId);
         return ResponseEntity.ok(ApiResponse.success(completedRegions, "완료된 OCR 영역 조회 완료"));
+    }
+
+    @Operation(
+            summary = "ProcessedItem을 ProcessItemMetadata로 변환",
+            description = "임시 저장된 ProcessedItem을 최종 ProcessItemMetadata/HtmlData/ImageData 테이블로 변환합니다."
+    )
+    @PostMapping("/publish/{processedItemId}")
+    public ResponseEntity<ApiResponse<Long>> publishProcessedItem(
+            @Parameter(description = "변환할 ProcessedItem ID", required = true)
+            @PathVariable Long processedItemId) {
+        
+        Long publishedItemId = processItemPublishService.publish(processedItemId);
+        return ResponseEntity.ok(ApiResponse.success(publishedItemId, "ProcessedItem 변환 완료"));
     }
 }
 

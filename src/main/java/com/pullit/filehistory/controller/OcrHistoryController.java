@@ -88,7 +88,7 @@ public class OcrHistoryController {
             summary = "OCR 히스토리 확정 저장",
             description = "임시 OCR 히스토리를 ProcessedItem과 연결하여 영구 보존합니다."
     )
-    @PatchMapping("/confirm/{pdfImageId}/{processedItemId}")
+    @PutMapping("/confirm/{pdfImageId}/{processedItemId}")
     public ResponseEntity<ApiResponse<Integer>> confirmOcrHistories(
             @Parameter(description = "PdfImage ID", required = true)
             @PathVariable Long pdfImageId,

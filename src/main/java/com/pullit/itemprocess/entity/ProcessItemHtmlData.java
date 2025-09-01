@@ -10,10 +10,11 @@ import java.util.List;
 @Entity
 @Table(name = "process_item_html_data")
 @Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@ToString(exclude = "ProcessItemMetadata")
+@ToString(exclude = "itemMetadata")
 public class ProcessItemHtmlData extends BaseTimeEntity {
 
     @Id
@@ -23,7 +24,7 @@ public class ProcessItemHtmlData extends BaseTimeEntity {
     // ItemMetadata와 1:1 관계, @MapsId로 PK 공유
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
-    @JoinColumn(name = "item_id")
+    @JoinColumn(name = "item_id",nullable = false, unique = true)
     private ProcessItemMetadata itemMetadata;
 
     @Lob
@@ -78,7 +79,7 @@ public class ProcessItemHtmlData extends BaseTimeEntity {
     @Column(name = "explain_html", columnDefinition = "TEXT")
     private String explainHtml;
 
-    void setItemMetadata(ProcessItemMetadata itemMetadata) {
+    public void setItemMetadata(ProcessItemMetadata itemMetadata) {
         this.itemMetadata = itemMetadata;
         if (itemMetadata != null) {
             this.itemId = itemMetadata.getItemId();
@@ -109,4 +110,6 @@ public class ProcessItemHtmlData extends BaseTimeEntity {
         return (explainHtml != null && !explainHtml.trim().isEmpty())
                 || (explainText != null && !explainText.trim().isEmpty());
     }
+
+
 }

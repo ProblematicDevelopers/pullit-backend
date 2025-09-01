@@ -10,10 +10,11 @@ import java.util.List;
 @Entity
 @Table(name = "process_item_image_data")
 @Getter
+@Setter
 @AllArgsConstructor
 @Builder
 @NoArgsConstructor
-@ToString(exclude = "ProcessItemMetadata")
+@ToString(exclude = "itemMetadata")
 public class ProcessItemImageData extends BaseTimeEntity {
 
     @Id
@@ -22,7 +23,7 @@ public class ProcessItemImageData extends BaseTimeEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
-    @JoinColumn(name = "item_id")
+    @JoinColumn(name = "item_id",nullable = false, unique = true)
     private ProcessItemMetadata itemMetadata;
 
     @Column(name = "passage_url", length = 500)
@@ -37,7 +38,7 @@ public class ProcessItemImageData extends BaseTimeEntity {
     @Column(name = "explain_url", length = 500)
     private String explainUrl;
 
-    void setItemMetadata(ProcessItemMetadata itemMetadata) {
+    public void setItemMetadata(ProcessItemMetadata itemMetadata) {
         this.itemMetadata = itemMetadata;
         if (itemMetadata != null) {
             this.itemId = itemMetadata.getItemId();
