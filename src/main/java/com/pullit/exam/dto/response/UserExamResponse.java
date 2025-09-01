@@ -33,6 +33,8 @@ public class UserExamResponse {
     private Integer timeLimit;
     private LocalDate examDate;
     private String description;
+    private String visibility;
+    private Long classId;
     private List<UserExamItemResponse> items;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -68,6 +70,8 @@ public class UserExamResponse {
                 .timeLimit(exam.getTimeLimit())
                 .examDate(exam.getExamDate())
                 .description(exam.getDescription())
+                .visibility(exam.getVisibility() != null ? exam.getVisibility().name() : null)
+                .classId(exam.getClassId())
                 .items(exam.getExamItems().stream()
                         .map(item -> UserExamItemResponse.builder()
                                 .id(item.getId())

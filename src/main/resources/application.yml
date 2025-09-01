@@ -199,3 +199,13 @@ ocr:
     app-id-header-name: "app_id"
     header-name: "app_key"
 
+# SMS Configuration
+sms:
+  coolsms:
+    api-key: NCST4LM3ZKGCWCTU  # 실제 API 키로 변경 필요
+    api-secret: 5ICHE2NJQDGIKXTL7IDZLPGQVLTDEFXI
+    from: 01066281998  # 발신번호 (실제 인증된 번호로 변경 필요)
+    api-url: https://api.coolsms.co.kr
+    verification-code-length: 6
+    verification-code-ttl: 180  # 3분 (초 단위)
+

@@ -3,6 +3,7 @@ package com.pullit.classes.controller;
 import com.pullit.auth.authentication.CustomUserDetails;
 import com.pullit.classes.dto.request.ClassCreateRequest;
 import com.pullit.classes.dto.request.ClassJoinRequest;
+import com.pullit.classes.dto.request.ClassUpdateRequest;
 import com.pullit.classes.dto.request.StudentInvitationRequest;
 import com.pullit.classes.dto.response.ClassCreateResponse;
 import com.pullit.cbt.dto.request.RedisMigrationRequest;
@@ -24,6 +25,8 @@ import com.pullit.common.exception.BusinessException;
 import com.pullit.common.exception.ErrorCode;
 import com.pullit.exam.dto.response.UserExamSchoolResponse;
 import com.pullit.exam.enums.ExamVisibility;
+import com.pullit.notification.annotation.NotificationTrigger;
+import com.pullit.notification.enums.NotificationType;
 import jakarta.validation.Valid;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,16 +49,24 @@ public class ClassesController {
     private final ClassesService classesService;
 
     /**
-     * 유저 ID로 클래스 상세 정보 조회 (교사 정보 + 학생 목록 포함)
+     * 현재 로그인한 사용자의 클래스 정보 조회
+     * 선생님인 경우 담당 클래스를, 학생인 경우 소속 클래스를 반환
      */
     @GetMapping("/myclass")
-    @Operation(summary = "유저 ID로 클래스 상세 정보 조회 (교사 정보 + 학생 목록 포함)", description = "유저 ID로 클래스 상세 정보 조회 (교사 정보 + 학생 목록 포함)")
-    public ResponseEntity<ApiResponse<ClassDetailResponse>> getClassDetailsByUserId(
+    @Operation(summary = "나의 클래스 정보 조회", description = "선생님은 담당 클래스, 학생은 소속 클래스 정보를 조회합니다")
+    public ResponseEntity<ApiResponse<ClassDetailResponse>> getMyClass(
             @AuthUser CustomUserDetails userDetails) {
         Long userId = userDetails.getUserId();
-        // List<ClassDetailResponse> classDetails =
-        // classesService.getClassDetailsByUserId(userId);
-        ClassDetailResponse classDetail = classesService.getClassDetailById(userId);
+        
+        ClassDetailResponse classDetail;
+        if (userDetails.isTeacher()) {
+            // 선생님인 경우 담당 클래스 조회
+            classDetail = classesService.getTeacherClass(userId);
+        } else {
+            // 학생인 경우 소속 클래스 조회
+            classDetail = classesService.getClassDetailById(userId);
+        }
+        
         return ResponseEntity.ok(ApiResponse.success(classDetail));
     }
 
@@ -237,6 +248,14 @@ public class ClassesController {
 
     @PostMapping("/{classId}/invitations")
     @Operation(summary = "학생 초대", description = "학급에 학생들을 초대합니다")
+    @NotificationTrigger(
+        type = NotificationType.CLASS_INVITATION,
+        multipleUsers = true,
+        userIdsExpression = "#result.invitedStudentIds",
+        title = "'반 초대'",
+        message = "#result.className + ' 반에 초대되었습니다'",
+        targetUrl = "'/student/class-room/my-class'"
+    )
     public ResponseEntity<ApiResponse<StudentInvitationResponse>> inviteStudents(
         @PathVariable Long classId,
         @Valid @RequestBody StudentInvitationRequest request,
@@ -367,5 +386,41 @@ public class ClassesController {
             "classId", classId.toString()
         );
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+    
+    @GetMapping("/teacher/my-class")
+    @Operation(summary = "선생님의 담당 학급 조회", description = "선생님이 담당하는 학급 정보를 초대 코드와 함께 조회합니다")
+    public ResponseEntity<ApiResponse<ClassDetailResponse>> getTeacherClass(
+        @AuthUser CustomUserDetails userDetails
+    ) {
+        // 1. 선생님 권한 확인
+        if (!userDetails.isTeacher()) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED, "선생님만 조회할 수 있습니다");
+        }
+        
+        // 2. 서비스 호출
+        ClassDetailResponse classDetail = classesService.getTeacherClass(userDetails.getUserId());
+        
+        // 3. 응답
+        return ResponseEntity.ok(ApiResponse.success(classDetail));
+    }
+    
+    @PutMapping("/{classId}")
+    @Operation(summary = "학급 정보 수정", description = "학급의 이름, 학년, 과목 정보를 수정합니다")
+    public ResponseEntity<ApiResponse<ClassDetailResponse>> updateClass(
+        @PathVariable Long classId,
+        @Valid @RequestBody ClassUpdateRequest request,
+        @AuthUser CustomUserDetails userDetails
+    ) {
+        // 1. 선생님 권한 확인
+        if (!userDetails.isTeacher()) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED, "선생님만 학급 정보를 수정할 수 있습니다");
+        }
+        
+        // 2. 서비스 호출
+        ClassDetailResponse updatedClass = classesService.updateClass(classId, request, userDetails.getUserId());
+        
+        // 3. 응답
+        return ResponseEntity.ok(ApiResponse.success(updatedClass));
     }
 }

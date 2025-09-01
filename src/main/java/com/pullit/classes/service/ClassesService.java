@@ -2,6 +2,7 @@ package com.pullit.classes.service;
 
 import com.pullit.classes.dto.request.ClassCreateRequest;
 import com.pullit.classes.dto.request.ClassJoinRequest;
+import com.pullit.classes.dto.request.ClassUpdateRequest;
 import com.pullit.classes.dto.request.StudentInvitationRequest;
 import com.pullit.classes.dto.response.ClassCreateResponse;
 import com.pullit.cbt.dto.request.RedisMigrationRequest;
@@ -75,4 +76,10 @@ public interface ClassesService {
 
     // 테스트용: 첫 번째 teacher ID 조회
     java.util.Optional<Long> getFirstTeacherId();
+    
+    // 선생님의 학급 조회
+    ClassDetailResponse getTeacherClass(Long teacherId);
+    
+    // 학급 정보 수정
+    ClassDetailResponse updateClass(Long classId, ClassUpdateRequest request, Long teacherId);
 }

@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class StudentServiceImpl implements StudentService {
 
     private final StudentRepository studentRepository;
@@ -31,12 +31,19 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
+    @Transactional
     public Student createStudent(User user, StudentInfo studentInfo) {
         log.info("Creating student for user: {}", user.getUsername());
         
+        // Check if student already exists
+        if (studentRepository.existsById(user.getId())) {
+            log.warn("Student already exists for user ID: {}", user.getId());
+            return studentRepository.findByUserId(user.getId());
+        }
+        
         Student student = Student.builder()
                 .userId(user.getId())
-                .user(user)
+                // user는 설정하지 않음 (insertable=false, updatable=false)
                 .classGroupID(studentInfo != null ? studentInfo.getClassGroupId() : null)
                 .studentNo(studentInfo != null ? studentInfo.getStudentNo() : null)
                 .grade(studentInfo != null ? studentInfo.getGrade() : null)

@@ -111,6 +111,16 @@ public interface ExamSearchService {
     List<UnifiedExamResponse> getRecommendedExams(Long userId, int limit);
 
     /**
+     * 내가 생성한 시험 목록 조회
+     * - 현재 사용자가 생성한 모든 시험 조회 (Exam, UserExam 모두 포함)
+     *
+     * @param userId 사용자 ID
+     * @param pageable 페이징
+     * @return 내가 생성한 시험 목록
+     */
+    Page<UnifiedExamResponse> getMyExams(Long userId, Pageable pageable);
+
+    /**
      * 필터 옵션 조회
      * - 학년, 과목, 학기, 교과서 등의 필터 옵션을 실제 데이터에서 조회
      *

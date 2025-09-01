@@ -12,6 +12,7 @@ import com.pullit.user.service.UserService;
 import com.pullit.teacher.service.TeacherService;
 import com.pullit.student.service.StudentService;
 import com.pullit.user.dto.request.TeacherInfo;
+import com.pullit.user.dto.request.StudentInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -94,7 +95,7 @@ public class AuthService {
         }
     }
 
-    @Transactional(noRollbackFor = {RuntimeException.class})
+    @Transactional
     public UserResponse registerWithTeacher(UserCreateRequest request) {
         log.info("Registration with teacher info for username: {}", request.getUsername());
 
@@ -117,16 +118,19 @@ public class AuthService {
             }
         }
         
-        // 3. If student role, create student record
+        // 3. If student role, create student record in separate transaction
         if (request.getUserRole() == UserRole.STUDENT && request.getStudentInfo() != null) {
             try {
+                // Get the created user by ID (more reliable than username)
                 User savedUser = userService.getUserById(response.getId());
                 
-                studentService.createStudent(savedUser, request.getStudentInfo());
-                log.info("Student record created for user: {}", savedUser.getUsername());
+                // Create student record - this will be in separate transaction
+                createStudentAsync(savedUser, request.getStudentInfo());
+                log.info("Student record creation initiated for user: {}", savedUser.getUsername());
             } catch (Exception e) {
-                log.error("Failed to create student record for user: {}, error: {}", 
+                log.error("Failed to initiate student record creation for user: {}, error: {}", 
                          request.getUsername(), e.getMessage());
+                // Continue even if student creation fails
             }
         }
         
@@ -143,6 +147,21 @@ public class AuthService {
                 log.info("Teacher record created successfully for user: {}", user.getUsername());
             } catch (Exception e) {
                 log.error("Failed to create teacher record for user: {}, error: {}", 
+                         user.getUsername(), e.getMessage());
+            }
+        }).start();
+    }
+    
+    // Create student asynchronously to avoid transaction conflicts
+    private void createStudentAsync(User user, StudentInfo studentInfo) {
+        // Run in separate thread to ensure separate transaction
+        new Thread(() -> {
+            try {
+                Thread.sleep(500); // Small delay to ensure user transaction completes
+                studentService.createStudent(user, studentInfo);
+                log.info("Student record created successfully for user: {}", user.getUsername());
+            } catch (Exception e) {
+                log.error("Failed to create student record for user: {}, error: {}", 
                          user.getUsername(), e.getMessage());
             }
         }).start();
