@@ -45,7 +45,8 @@ public class OcrHistory {
     @Column(name = "edited_text", columnDefinition = "TEXT")
     private String editedText;
 
-    @Column(name = "original_image_url", length = 500)
+    @Lob
+    @Column(name = "original_image_url", columnDefinition = "MEDIUMTEXT")
     private String originalImageUrl;
 
     @Column(name = "position_x")
@@ -56,5 +57,9 @@ public class OcrHistory {
     private String sizeX;
     @Column(name = "size_y")
     private String sizeY;
+    
+    // 새로운 구조화된 지오메트리 정보
+    @Embedded
+    private BoundingBox boundingBox;
 
 }
