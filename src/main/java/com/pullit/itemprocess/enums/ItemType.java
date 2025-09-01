@@ -8,10 +8,10 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum ItemType {
-    MULTIPLE("multiple", "객관식"),
-    SUBJECTIVE("subjective", "주관식"),
-    SHORT_ANSWER("shortAnswer", "단답형"),
-    ESSAY("essay", "서술형");
+    FIVE_CHOICE("fiveChoice", "5지 선택"),
+    SHORT_ANSWER_ORDERED("shortAnswerOrdered", "단답 유순형"),
+    SHORT_ANSWER_UNORDERED("shortAnswerUnOrdered", "단답 무순형"),
+    FREE_CHOICE("freeChoice", "자유 선지형");
 
     private final String code;
     private final String displayName;

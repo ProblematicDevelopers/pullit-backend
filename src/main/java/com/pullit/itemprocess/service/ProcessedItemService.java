@@ -24,11 +24,16 @@ public class ProcessedItemService {
     private final ProcessedItemRepository processedItemRepository;
     private final OcrHistoryRepository ocrHistoryRepository;
     private final PdfImageRepository pdfImageRepository;
-    
+
+    public Long saveProcessedItemAndReturnId(ProcessedItemSaveRequest request) {
+        ProcessedItem saved = saveProcessedItem(request); // 기존 로직 재사용
+        return saved.getId();
+    }
+
     public ProcessedItem saveProcessedItem(ProcessedItemSaveRequest request) {
         ProcessedItem processedItem = ProcessedItem.builder()
                 .type(request.getType())
-                .score(0)
+                .score(request.getScore() != null ? request.getScore() : 0) // null이면 기본값 0
                 .difficulty(request.getDifficulty())
                 .answer(request.getAnswer())
                 .majorChapterId(request.getMajorChapterId())

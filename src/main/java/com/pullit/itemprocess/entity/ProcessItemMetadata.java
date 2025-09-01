@@ -10,6 +10,7 @@ import lombok.*;
 @Entity
 @Table(name = "process_item_metadata")
 @Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -17,7 +18,12 @@ import lombok.*;
 public class ProcessItemMetadata extends BaseTimeEntity {
     @Id
     @Column(name = "item_id", nullable = false, length = 50)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // 부모 PK 생성
     private Long itemId;
+
+    // 재변환/정리용: 원본(ProcessItem) ID를 보관해 기존 데이터 식별
+    @Column(name = "source_item_id", unique = true, nullable = false)
+    private Long sourceItemId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id")
@@ -51,12 +57,16 @@ public class ProcessItemMetadata extends BaseTimeEntity {
     @Builder.Default
     private Boolean hasImageData = false;
 
-    @OneToOne(mappedBy = "itemMetadata", fetch = FetchType.LAZY,
-            cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "itemMetadata",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
     private ProcessItemHtmlData htmlData;
 
-    @OneToOne(mappedBy = "itemMetadata", fetch = FetchType.LAZY,
-            cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "itemMetadata",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
     private ProcessItemImageData imageData;
 
     public void setHtmlData(ProcessItemHtmlData htmlData) {
