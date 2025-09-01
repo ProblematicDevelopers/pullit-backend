@@ -47,6 +47,43 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long>, Query
      * @return 빠른 날짜순으로 정렬된 시험 목록
      */
     List<UserExam> findByClassIdAndVisibilityAndExamDateGreaterThanEqualOrderByExamDateAsc(Long classId, ExamVisibility visibility, LocalDate examDate);
+    
+    // 대시보드용 추가 메서드
+    
+    /**
+     * 사용자가 생성한 최근 시험 조회
+     */
+    List<UserExam> findByCreatedByOrderByCreatedDateDesc(Long userId, Pageable pageable);
+    
+    /**
+     * 예정된 시험 조회
+     */
+    @Query("SELECT ue FROM UserExam ue WHERE ue.createdBy = :userId " +
+           "AND ue.examDate >= :fromDate AND ue.deletedDate IS NULL " +
+           "ORDER BY ue.examDate ASC")
+    List<UserExam> findUpcomingExams(@Param("userId") Long userId, 
+                                     @Param("fromDate") LocalDate fromDate,
+                                     Pageable pageable);
+    
+    /**
+     * 활성 시험 수 조회
+     */
+    @Query("SELECT COUNT(ue) FROM UserExam ue WHERE ue.createdBy = :userId " +
+           "AND ue.deletedDate IS NULL " +
+           "AND (ue.examDate IS NULL OR ue.examDate >= CURRENT_DATE)")
+    Long countActiveExams(@Param("userId") Long userId);
+    
+    /**
+     * 사용자가 생성한 시험 수 조회
+     */
+    Long countByCreatedBy(Long userId);
+    
+    /**
+     * 사용자가 생성한 시험의 총 문항 수 조회
+     */
+    @Query("SELECT SUM(ue.totalItems) FROM UserExam ue WHERE ue.createdBy = :userId " +
+           "AND ue.deletedDate IS NULL")
+    Long getTotalQuestionsByTeacher(@Param("userId") Long userId);
 
     Optional<UserExam> findByIdAndClassId(Long examId, Long classId);
 

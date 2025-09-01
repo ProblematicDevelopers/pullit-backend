@@ -240,6 +240,28 @@ public class ExamSearchServiceImpl implements ExamSearchService {
         return result.getContent();
     }
 
+    /**
+     * 내가 생성한 시험 목록 조회
+     * - 현재 사용자가 생성한 모든 시험 조회 (Exam, UserExam 모두 포함)
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UnifiedExamResponse> getMyExams(Long userId, Pageable pageable) {
+        log.debug("내 시험 목록 조회: userId={}", userId);
+
+        // ExamSearchRequest를 사용하여 createdBy로 필터링
+        ExamSearchRequest request = ExamSearchRequest.builder()
+                .createdBy(userId)  // 생성자 ID로 필터링
+                .build();
+
+        // 기존의 searchUnified 메서드를 활용하여 Exam과 UserExam 모두 검색
+        Page<UnifiedExamResponse> result = examSearchRepository.searchUnified(request, pageable);
+        
+        log.info("내 시험 목록 조회 완료: userId={}, totalElements={}", userId, result.getTotalElements());
+        
+        return result;
+    }
+
     // ===== Private Helper Methods =====
 
     /**

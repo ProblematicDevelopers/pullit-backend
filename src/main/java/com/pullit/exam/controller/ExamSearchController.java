@@ -1,5 +1,7 @@
 package com.pullit.exam.controller;
 
+import com.pullit.auth.authentication.CustomUserDetails;
+import com.pullit.common.annotation.AuthUser;
 import com.pullit.common.dto.response.ApiResponse;
 import com.pullit.common.exception.ErrorCode;
 import com.pullit.exam.dto.request.ExamSearchRequest;
@@ -148,6 +150,23 @@ public class ExamSearchController {
         log.info("추천 시험 조회: userId={}, limit={}", userId, limit);
 
         List<UnifiedExamResponse> results = examSearchService.getRecommendedExams(userId, limit);
+        return ResponseEntity.ok(results);
+    }
+
+    /**
+     * 내가 생성한 시험 목록 조회
+     * - 현재 로그인한 사용자가 생성한 모든 시험 조회
+     * - Exam과 UserExam 모두 포함
+     */
+    @GetMapping("/my")
+    @Operation(summary = "내가 생성한 시험 목록 조회", description = "현재 로그인한 사용자가 생성한 모든 시험을 조회합니다")
+    public ResponseEntity<Page<UnifiedExamResponse>> getMyExams(
+            @AuthUser CustomUserDetails userDetails,
+            @PageableDefault(size = 20, sort = "createdDate", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        log.info("내 시험 목록 조회: userId={}", userDetails.getUserId());
+
+        Page<UnifiedExamResponse> results = examSearchService.getMyExams(userDetails.getUserId(), pageable);
         return ResponseEntity.ok(results);
     }
 

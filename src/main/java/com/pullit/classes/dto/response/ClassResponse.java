@@ -11,8 +11,8 @@ import java.time.LocalDateTime;
 public class ClassResponse {
     private Long classId;
     private String className;
-    private Long classGrade;
-    private String classSubject;
+    private String classGrade;  // '07', '08', '09'
+    private String classSubject; // 'MA', 'KO', 'EN', 'SC', 'SO'
     private Long teacherId;
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
