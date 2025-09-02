@@ -435,7 +435,7 @@ public class ClassesServiceImpl implements ClassesService {
                             .studentName(user != null ? user.getFullName() : "Unknown")
                             .email(user != null ? user.getEmail() : "")
                             .phoneNumber(user != null ? user.getPhone() : "")
-                            .grade(student.getGrade() != null ? Long.parseLong(student.getGrade().getCode()) : null)
+                            .grade(student.getGrade() != null ? convertGradeCodeToNumber(student.getGrade().getCode()) : null)
                             .studentNumber(student.getStudentNo().toString())
                             .enrolledDate(student.getCreatedDate().toLocalDate())
                             .status("OFFLINE")
@@ -813,6 +813,21 @@ public class ClassesServiceImpl implements ClassesService {
         }
     }
 
+    private String convertGradeNumberToCode(Long gradeNumber) {
+        // 숫자 학년을 코드로 변환 (1 -> 07, 2 -> 08, 3 -> 09)
+        if (gradeNumber == null) return null;
+        switch (gradeNumber.intValue()) {
+            case 1:
+                return "07";
+            case 2:
+                return "08";
+            case 3:
+                return "09";
+            default:
+                return null;
+        }
+    }
+
     @Override
     public List<StudentInfoResponse> getAvailableStudentsInSameSchool(Long teacherId, String search, Long grade) {
         // 1. 선생님의 학교 정보 조회
@@ -828,7 +843,12 @@ public class ClassesServiceImpl implements ClassesService {
         // 2. 같은 학교의 학생 조회 (학급 미배정 학생만)
         List<Student> availableStudents;
         if (grade != null) {
-            availableStudents = studentRepository.findBySchoolIdAndGradeAndClassGroupIDIsNull(schoolId, grade);
+            String gradeCode = convertGradeNumberToCode(grade);
+            if (gradeCode != null) {
+                availableStudents = studentRepository.findBySchoolIdAndGrade_CodeAndClassGroupIDIsNull(schoolId, gradeCode);
+            } else {
+                availableStudents = studentRepository.findBySchoolIdAndClassGroupIDIsNull(schoolId);
+            }
         } else {
             availableStudents = studentRepository.findBySchoolIdAndClassGroupIDIsNull(schoolId);
         }
@@ -857,7 +877,7 @@ public class ClassesServiceImpl implements ClassesService {
                             .studentName(user.getFullName())
                             .email(user.getEmail())
                             .phoneNumber(user.getPhone())
-                            .grade(student.getGrade() != null ? Long.parseLong(student.getGrade().getCode()) : null)
+                            .grade(student.getGrade() != null ? convertGradeCodeToNumber(student.getGrade().getCode()) : null)
                             .studentNumber(student.getStudentNo() != null ? student.getStudentNo().toString() : "")
                             .enrolledDate(student.getCreatedDate() != null ? student.getCreatedDate().toLocalDate() : null)
                             .status("AVAILABLE")

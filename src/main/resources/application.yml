@@ -63,7 +63,8 @@ spring:
             client-id: ${KAKAO_CLIENT_ID:}
             client-secret: ${KAKAO_CLIENT_SECRET:}
             client-authentication-method: post
-            redirect-uri: "{baseUrl}/api/auth/oauth2/kakao/callback"
+            # Use API callback path proxied by nginx in production
+            redirect-uri: "{baseUrl}/api/auth/oauth2/callback/kakao"
             authorization-grant-type: authorization_code
             scope:
               - profile_nickname
@@ -73,7 +74,8 @@ spring:
             client-id: ${NAVER_CLIENT_ID:}
             client-secret: ${NAVER_CLIENT_SECRET:}
             client-authentication-method: post
-            redirect-uri: "{baseUrl}/api/auth/oauth2/naver/callback"
+            # Use API callback path proxied by nginx in production
+            redirect-uri: "{baseUrl}/api/auth/oauth2/callback/naver"
             authorization-grant-type: authorization_code
             scope:
               - name
@@ -100,6 +102,9 @@ app:
   pdf:
     image-dpi: 300  # PDF를 이미지로 변환할 때의 DPI (해상도)
     image-format: png  # 변환할 이미지 형식 (png, jpg 등)
+  urls:
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+    backend-base-url: ${BACKEND_BASE_URL:http://localhost:8080}
 
 server:
   port: 8080
@@ -109,8 +114,9 @@ server:
       force: true
       enabled: true
 
+# Legacy CORS entry (not used directly by SecurityConfig)
 cors:
-  allowed-origins: http://localhost:5173,http://localhost:3000
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
 
 # SpringDoc OpenAPI 설정
 springdoc:
@@ -131,11 +137,8 @@ springdoc:
 # Security 설정
 security:
   cors:
-    allowed-origins:
-      - http://localhost:5173
-      - http://localhost:5174
-      - http://localhost:5175
-      - http://localhost:3000
+    # Comma-separated list; Spring will bind into List<String>
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000}
     allowed-methods:
       - GET
       - POST
@@ -199,6 +202,13 @@ ocr:
     app-id-header-name: "app_id"
     header-name: "app_key"
 
+# Frontend/Backend base URLs moved under app.urls above
+
+# OAuth2 success redirect target for Spring Security handler (if used)
+oauth2:
+  success:
+    redirect-uri: ${FRONTEND_BASE_URL:http://localhost:5173}/oauth2/callback
+
 # SMS Configuration
 sms:
   coolsms:
@@ -208,4 +218,3 @@ sms:
     api-url: https://api.coolsms.co.kr
     verification-code-length: 6
     verification-code-ttl: 180  # 3분 (초 단위)
-

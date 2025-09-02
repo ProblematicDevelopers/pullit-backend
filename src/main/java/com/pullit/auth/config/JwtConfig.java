@@ -14,6 +14,12 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+import com.pullit.auth.security.SessionJwtValidator;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -24,6 +30,7 @@ public class JwtConfig {
 
     private final RSAPublicKey publicKey;
     private final RSAPrivateKey privateKey;
+    private final SessionJwtValidator sessionJwtValidator;
 
 
     @Bean
@@ -36,8 +43,14 @@ public class JwtConfig {
     }
     @Bean
     public JwtDecoder jwtDecoder() {
-        // PropertyConfig에서 생성한 publicKey 빈 사용
-        return NimbusJwtDecoder.withPublicKey(publicKey).build();
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(publicKey).build();
+        // Keep default timestamp validation and add session validator
+        OAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(
+                new JwtTimestampValidator(),
+                sessionJwtValidator
+        );
+        decoder.setJwtValidator(validator);
+        return decoder;
     }
 
 

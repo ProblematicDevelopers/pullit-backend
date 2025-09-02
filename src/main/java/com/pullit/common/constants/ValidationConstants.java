@@ -7,7 +7,7 @@ public class ValidationConstants {
     public static final String PATTERN_EMAIL = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
     public static final String PATTERN_PHONE = "^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$";
     public static final String PATTERN_PHONE_CLEAN = "^(01[016789])(\\d{3,4})(\\d{4})$";
-    public static final String PATTERN_PASSWORD = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
+    public static final String PATTERN_PASSWORD = "^(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[a-z\\d@$!%*?&]{8,}$";
     public static final String PATTERN_USERNAME = "^[a-zA-Z0-9_]{3,20}$";
     public static final String PATTERN_KOREAN_NAME = "^[가-힣]{2,10}$";
     public static final String PATTERN_ENGLISH_NAME = "^[a-zA-Z\\s]{2,50}$";
@@ -37,7 +37,7 @@ public class ValidationConstants {
     public static final String MSG_REQUIRED = "필수 입력 항목입니다.";
     public static final String MSG_INVALID_EMAIL = "올바른 이메일 형식이 아닙니다.";
     public static final String MSG_INVALID_PHONE = "올바른 전화번호 형식이 아닙니다.";
-    public static final String MSG_INVALID_PASSWORD = "비밀번호는 최소 8자 이상, 대소문자, 숫자, 특수문자를 포함해야 합니다.";
+    public static final String MSG_INVALID_PASSWORD = "비밀번호는 최소 8자 이상, 소문자, 숫자, 특수문자를 포함해야 합니다.";
     public static final String MSG_PASSWORD_MISMATCH = "비밀번호가 일치하지 않습니다.";
     public static final String MSG_DUPLICATE_EMAIL = "이미 사용 중인 이메일입니다.";
     public static final String MSG_DUPLICATE_USERNAME = "이미 사용 중인 사용자명입니다.";

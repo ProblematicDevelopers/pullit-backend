@@ -30,6 +30,8 @@ public class OAuth2Service {
 
     private final UserService userService;
     private final JwtService jwtService;
+    private final ActiveSessionService activeSessionService;
+    private final com.pullit.auth.config.JwtProperties jwtProperties;
 
     @Transactional
     public LoginResponse handleOAuth2LoginSuccess(Authentication authentication) {
@@ -67,10 +69,12 @@ public class OAuth2Service {
             Optional<User> existingUser = email != null ? userService.findByEmail(email) : Optional.empty();
             
             if (existingUser.isPresent()) {
-                // 기존 사용자: JWT 토큰 생성
+                // 기존 사용자: 세션 생성 후 JWT 토큰 생성
                 User user = existingUser.get();
-                String accessToken = jwtService.generateAccessToken(user);
-                String refreshToken = jwtService.generateRefreshToken(user);
+                String sessionId = java.util.UUID.randomUUID().toString();
+                activeSessionService.setActiveSession(user.getId(), sessionId, jwtProperties.getRefreshTokenExpiration());
+                String accessToken = jwtService.generateAccessToken(user, sessionId);
+                String refreshToken = jwtService.generateRefreshToken(user, sessionId);
                 
                 // 마지막 로그인 시간 업데이트
                 userService.updateLastLogin(user.getId());
@@ -120,11 +124,13 @@ public class OAuth2Service {
             Optional<User> existingUser = email != null ? userService.findByEmail(email) : Optional.empty();
             
             if (existingUser.isPresent()) {
-                // 기존 사용자: JWT 토큰 생성
+                // 기존 사용자: 세션 생성 후 JWT 토큰 생성
                 User user = existingUser.get();
                 log.info("Generating JWT tokens for user: {}", user.getUsername());
-                String accessToken = jwtService.generateAccessToken(user);
-                String refreshToken = jwtService.generateRefreshToken(user);
+                String sessionId = java.util.UUID.randomUUID().toString();
+                activeSessionService.setActiveSession(user.getId(), sessionId, jwtProperties.getRefreshTokenExpiration());
+                String accessToken = jwtService.generateAccessToken(user, sessionId);
+                String refreshToken = jwtService.generateRefreshToken(user, sessionId);
                 
                 log.info("JWT tokens generated - Access Token: {}..., Refresh Token: {}...", 
                     accessToken != null ? accessToken.substring(0, Math.min(20, accessToken.length())) : "null",

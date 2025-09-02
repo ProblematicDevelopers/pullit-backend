@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -31,5 +32,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Modifying
     @Query("UPDATE User u SET u.lastLoginAt = :lastLoginAt WHERE u.id = :userId")
     void updateLastLoginAt(@Param("userId") Long userId, @Param("lastLoginAt") LocalDateTime lastLoginAt);
+
+    // 아이디 찾기 - 이름으로 사용자 조회
+    @Query("SELECT u FROM User u WHERE u.fullName = :fullName")
+    List<User> findByFullName(@Param("fullName") String fullName);
+    
+    // 비밀번호 찾기용 메서드 (기존 findByUsername과 동일하므로 제거)
 
 }

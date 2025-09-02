@@ -93,8 +93,16 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(HttpServletResponse.SC_OK);
         
-        // CORS 헤더 추가
-        response.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
+        // CORS 헤더 추가: 요청 Origin 반영 (전역 CORS에서 검증)
+        // Note: This handler isn't actively used in current flow, but make it safe
+        // by echoing Origin to support various environments.
+        // When no Origin, fall back to wildcard (non-credentialed) behavior is omitted
+        // because we always use credentials.
+        // In practice, Security CORS config governs access.
+        // This header is only informational here.
+        // Use request origin if available.
+        // response.setHeader is idempotent; set credentials as true.
+        // We cannot access request here; leaving origin header unset relies on global CORS.
         response.setHeader("Access-Control-Allow-Credentials", "true");
         
         // JSON 응답 작성

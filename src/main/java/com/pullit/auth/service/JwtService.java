@@ -52,6 +52,41 @@ public class JwtService {
         return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 
+    public String generateAccessToken(User user, String sessionId){
+        Instant now = Instant.now();
+        Instant expiresAt = now.plusSeconds(jwtProperties.getAccessTokenExpiration());
+
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(jwtProperties.getIssuer())
+                .issuedAt(now)
+                .expiresAt(expiresAt)
+                .subject(user.getId().toString())
+                .claim("username", user.getUsername())
+                .claim("email", user.getEmail())
+                .claim("fullName", user.getFullName())
+                .claim("role", user.getRole().name())
+                .claim("sessionId", sessionId)
+                .build();
+
+        JwsHeader jwsHeader = JwsHeader.with(()->"RS256").build();
+        return jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader,claims)).getTokenValue();
+    }
+
+    public String generateRefreshToken(User user, String sessionId){
+        Instant now = Instant.now();
+        Instant expiresAt = now.plusSeconds(jwtProperties.getRefreshTokenExpiration());
+
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(jwtProperties.getIssuer())
+                .issuedAt(now)
+                .expiresAt(expiresAt)
+                .subject(user.getId().toString())
+                .claim("type","refresh")
+                .claim("sessionId", sessionId)
+                .build();
+        return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+    }
+
     public Long getUserIdFromToken(String token){
         try{
             Jwt jwt = jwtDecoder.decode(token);
@@ -115,6 +150,16 @@ public class JwtService {
         } catch (JwtException e) {
             log.error("Failed to get expiration from token: {}", e.getMessage());
             throw e;
+        }
+    }
+
+    public String getSessionIdFromToken(String token) {
+        try {
+            Jwt jwt = jwtDecoder.decode(token);
+            return jwt.getClaim("sessionId");
+        } catch (JwtException e) {
+            log.error("Failed to get sessionId from token: {}", e.getMessage());
+            return null;
         }
     }
 

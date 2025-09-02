@@ -242,7 +242,7 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
                      JOIN item_metadata im ON uei.item_id = im.item_id
                      JOIN item_activity_mapping iam ON im.item_id = iam.item_id
                      JOIN evaluation_domains ed ON iam.activity_category_id = ed.domain_id
-            WHERE user_exam_id = 6
+            WHERE user_exam_id = :examId
             GROUP BY ed.domain_name
         ),
         user_domain_correct_counts AS (
@@ -256,7 +256,7 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
                      JOIN evaluation_domains ed ON iam.activity_category_id = ed.domain_id
                      JOIN exam_attempt_question eaq ON uei.id = eaq.question_id
                      JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
-            WHERE uei.user_exam_id = 6
+            WHERE uei.user_exam_id = :examId
             GROUP BY ed.domain_name, ea.user_id
         ),
         user_domain_points AS (
@@ -270,7 +270,7 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
                      JOIN evaluation_domains ed ON iam.activity_category_id = ed.domain_id
                      JOIN exam_attempt_question eaq ON uei.id = eaq.question_id
                      JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
-            WHERE uei.user_exam_id = 6
+            WHERE uei.user_exam_id = :examId
             GROUP BY ed.domain_name, ea.user_id
         ),
         user_domain_duration AS (
@@ -284,18 +284,18 @@ public interface ReportRepository extends JpaRepository<AttemptExam, Long> {
                      JOIN evaluation_domains ed ON iam.activity_category_id = ed.domain_id
                      JOIN exam_attempt_question eaq ON uei.id = eaq.question_id
                      JOIN exam_attempt ea ON ea.attempt_id = eaq.attempt_id
-            WHERE uei.user_exam_id = 6
+            WHERE uei.user_exam_id = :examId
             GROUP BY ed.domain_name, ea.user_id
         )
         SELECT
             udcc.domain_name AS domainName,
             dt.total_count AS totalCount,
-            MAX(CASE WHEN udcc.user_id = 8 THEN udcc.user_correct_count ELSE 0 END) AS userCount,
+            MAX(CASE WHEN udcc.user_id = :userId THEN udcc.user_correct_count ELSE 0 END) AS userCount,
             AVG(udcc.user_correct_count) AS avgCount,
             dt.total_points AS totalPoints,
-            MAX(CASE WHEN udp.user_id = 8 THEN udp.user_total_points ELSE 0 END) AS userPoints,
+            MAX(CASE WHEN udp.user_id = :userId THEN udp.user_total_points ELSE 0 END) AS userPoints,
             AVG(udp.user_total_points) AS avgPoints,
-            MAX(CASE WHEN udd.user_id = 8 THEN udd.avg_duration ELSE 0 END) AS userDuration,
+            MAX(CASE WHEN udd.user_id = :userId THEN udd.avg_duration ELSE 0 END) AS userDuration,
             AVG(udd.avg_duration) AS avgDuration
         FROM user_domain_correct_counts udcc
                  JOIN domain_totals dt ON udcc.domain_name = dt.domain_name

@@ -29,6 +29,12 @@ public class OAuth2AuthorizationController {
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
 
+    @Value("${app.urls.backend-base-url:http://localhost:8080}")
+    private String backendBaseUrl;
+
+    @Value("${app.urls.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
+
     @GetMapping("/oauth2/authorization/naver")
     public String startNaverOAuth2() {
         try {
@@ -36,7 +42,8 @@ public class OAuth2AuthorizationController {
             String state = generateState();
             
             // 네이버 OAuth2 인증 URL 생성
-            String redirectUri = "http://localhost:8080/login/oauth2/code/naver";
+            // Use API callback path so nginx proxies to backend in prod
+            String redirectUri = backendBaseUrl + "/api/auth/oauth2/callback/naver";
             String scope = "name email";
             
             String authUrl = String.format(
@@ -52,7 +59,7 @@ public class OAuth2AuthorizationController {
             
         } catch (Exception e) {
             log.error("Error starting Naver OAuth2", e);
-            return "redirect:http://localhost:5173/login?error=oauth2_start_failed";
+            return "redirect:" + frontendBaseUrl + "/login?error=oauth2_start_failed";
         }
     }
 
@@ -65,7 +72,7 @@ public class OAuth2AuthorizationController {
             String state = generateState();
             
             // 카카오 OAuth2 인증 URL 생성
-            String redirectUri = "http://localhost:8080/login/oauth2/code/kakao";
+            String redirectUri = backendBaseUrl + "/api/auth/oauth2/callback/kakao";
             String scope = "profile_nickname,account_email";
             
             String authUrl = String.format(
@@ -81,7 +88,7 @@ public class OAuth2AuthorizationController {
             
         } catch (Exception e) {
             log.error("Error starting Kakao OAuth2", e);
-            return "redirect:http://localhost:5173/login?error=oauth2_start_failed";
+            return "redirect:" + frontendBaseUrl + "/login?error=oauth2_start_failed";
         }
     }
 
@@ -92,7 +99,7 @@ public class OAuth2AuthorizationController {
             String state = generateState();
             
             // 구글 OAuth2 인증 URL 생성
-            String redirectUri = "http://localhost:8080/login/oauth2/code/google";
+            String redirectUri = backendBaseUrl + "/api/auth/oauth2/callback/google";
             String scope = "email profile";
             
             String authUrl = String.format(
@@ -108,7 +115,58 @@ public class OAuth2AuthorizationController {
             
         } catch (Exception e) {
             log.error("Error starting Google OAuth2", e);
-            return "redirect:http://localhost:5173/login?error=oauth2_start_failed";
+            return "redirect:" + frontendBaseUrl + "/login?error=oauth2_start_failed";
+        }
+    }
+
+    @GetMapping("/api/oauth2/authorization/{provider}")
+    public String startOAuth2Generic(@PathVariable String provider) {
+        try {
+            String state = generateState();
+            String redirectUri = backendBaseUrl + "/api/auth/oauth2/callback/" + provider;
+            String authUrl;
+
+            switch (provider.toLowerCase()) {
+                case "naver" -> {
+                    String scope = "name email";
+                    authUrl = String.format(
+                        "https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s&scope=%s",
+                        naverClientId,
+                        URLEncoder.encode(redirectUri, StandardCharsets.UTF_8),
+                        state,
+                        URLEncoder.encode(scope, StandardCharsets.UTF_8)
+                    );
+                }
+                case "kakao" -> {
+                    String scope = "profile_nickname,account_email";
+                    authUrl = String.format(
+                        "https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s&scope=%s",
+                        kakaoClientId,
+                        URLEncoder.encode(redirectUri, StandardCharsets.UTF_8),
+                        state,
+                        URLEncoder.encode(scope, StandardCharsets.UTF_8)
+                    );
+                }
+                case "google" -> {
+                    String scope = "email profile";
+                    authUrl = String.format(
+                        "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=%s&redirect_uri=%s&state=%s&scope=%s",
+                        googleClientId,
+                        URLEncoder.encode(redirectUri, StandardCharsets.UTF_8),
+                        state,
+                        URLEncoder.encode(scope, StandardCharsets.UTF_8)
+                    );
+                }
+                default -> {
+                    return "redirect:" + frontendBaseUrl + "/login?error=unsupported_provider";
+                }
+            }
+
+            log.info("Redirecting to {} OAuth2: {}", provider, authUrl);
+            return "redirect:" + authUrl;
+        } catch (Exception e) {
+            log.error("Error starting {} OAuth2", provider, e);
+            return "redirect:" + frontendBaseUrl + "/login?error=oauth2_start_failed";
         }
     }
 
