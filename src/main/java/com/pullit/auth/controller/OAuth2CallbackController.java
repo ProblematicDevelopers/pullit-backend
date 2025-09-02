@@ -43,6 +43,9 @@ public class OAuth2CallbackController {
     @Value("${app.urls.frontend-base-url:http://localhost:5173}")
     private String frontendBaseUrl;
 
+    @Value("${app.urls.backend-base-url:http://localhost:8080}")
+    private String backendBaseUrl;
+
     @GetMapping({"/login/oauth2/code/naver", "/api/auth/oauth2/callback/naver"})
     public String handleNaverCallback(
             @RequestParam String code,
@@ -60,6 +63,7 @@ public class OAuth2CallbackController {
             tokenParams.add("client_secret", naverClientSecret);
             tokenParams.add("code", code);
             tokenParams.add("state", state);
+            tokenParams.add("redirect_uri", backendBaseUrl + "/api/auth/oauth2/callback/kakao");
             
             ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(tokenUrl, tokenParams, Map.class);
             Map<String, Object> tokenData = tokenResponse.getBody();
