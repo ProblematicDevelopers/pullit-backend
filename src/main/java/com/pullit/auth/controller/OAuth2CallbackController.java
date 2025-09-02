@@ -40,7 +40,13 @@ public class OAuth2CallbackController {
     
 
 
-    @GetMapping("/login/oauth2/code/naver")
+    @Value("${app.urls.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
+
+    @Value("${app.urls.backend-base-url:http://localhost:8080}")
+    private String backendBaseUrl;
+
+    @GetMapping({"/login/oauth2/code/naver", "/api/auth/oauth2/callback/naver"})
     public String handleNaverCallback(
             @RequestParam String code,
             @RequestParam String state,
@@ -57,6 +63,7 @@ public class OAuth2CallbackController {
             tokenParams.add("client_secret", naverClientSecret);
             tokenParams.add("code", code);
             tokenParams.add("state", state);
+            tokenParams.add("redirect_uri", backendBaseUrl + "/api/auth/oauth2/callback/kakao");
             
             ResponseEntity<Map> tokenResponse = restTemplate.postForEntity(tokenUrl, tokenParams, Map.class);
             Map<String, Object> tokenData = tokenResponse.getBody();
@@ -97,25 +104,24 @@ public class OAuth2CallbackController {
                     log.info("OAuth2 social info saved to session: {}", socialInfo);
                     log.info("Generated username from email: {} -> {}", email, username);
                     
-                    // 4. 사용자 존재 여부 확인 후 프론트엔드로 직접 리다이렉트
-                    // 이메일로 기존 사용자 확인 (여기서는 프론트엔드에서 처리하도록 위임)
-                    return "redirect:http://localhost:5173/oauth2/callback/naver?status=process";
+                    // 4. 사용자 존재 여부 확인 후 프론트엔드로 직접 리다이렉트 (프론트에서 처리)
+                    return "redirect:" + frontendBaseUrl + "/oauth2/callback/naver?status=process";
                 } else {
                     log.warn("User info response is invalid: {}", userInfo);
-                    return "redirect:http://localhost:5173/login?error=oauth2_userinfo_failed";
+                    return "redirect:" + frontendBaseUrl + "/login?error=oauth2_userinfo_failed";
                 }
             } else {
                 log.warn("Token response is invalid: {}", tokenData);
-                return "redirect:http://localhost:5173/login?error=oauth2_token_failed";
+                return "redirect:" + frontendBaseUrl + "/login?error=oauth2_token_failed";
             }
             
         } catch (Exception e) {
             log.error("Error handling Naver OAuth2 callback", e);
-            return "redirect:http://localhost:5173/login?error=oauth2_callback_failed";
+            return "redirect:" + frontendBaseUrl + "/login?error=oauth2_callback_failed";
         }
     }
 
-    @GetMapping("/login/oauth2/code/kakao")
+    @GetMapping({"/login/oauth2/code/kakao", "/api/auth/oauth2/callback/kakao"})
     public String handleKakaoCallback(
             @RequestParam String code,
             @RequestParam String state,
@@ -181,27 +187,27 @@ public class OAuth2CallbackController {
                         log.info("Generated username from email: {} -> {}", email, username);
                         
                         // 4. 프론트엔드로 직접 리다이렉트 (네이버와 동일한 흐름)
-                        return "redirect:http://localhost:5173/oauth2/callback/kakao?status=process";
+                        return "redirect:" + frontendBaseUrl + "/oauth2/callback/kakao?status=process";
                     } else {
                         log.warn("Kakao account info not found");
-                        return "redirect:http://localhost:5173/login?error=oauth2_userinfo_failed";
+                        return "redirect:" + frontendBaseUrl + "/login?error=oauth2_userinfo_failed";
                     }
                 } else {
                     log.warn("Kakao user info response is invalid: {}", userInfo);
-                    return "redirect:http://localhost:5173/login?error=oauth2_userinfo_failed";
+                    return "redirect:" + frontendBaseUrl + "/login?error=oauth2_userinfo_failed";
                 }
             } else {
                 log.warn("Kakao token response is invalid: {}", tokenData);
-                return "redirect:http://localhost:5173/login?error=oauth2_token_failed";
+                return "redirect:" + frontendBaseUrl + "/login?error=oauth2_token_failed";
             }
             
         } catch (Exception e) {
             log.error("Error handling Kakao OAuth2 callback", e);
-            return "redirect:http://localhost:5173/login?error=oauth2_callback_failed";
+            return "redirect:" + frontendBaseUrl + "/login?error=oauth2_callback_failed";
         }
     }
 
-    @GetMapping("/login/oauth2/code/google")
+    @GetMapping({"/login/oauth2/code/google", "/api/auth/oauth2/callback/google"})
     public String handleGoogleCallback(
             @RequestParam String code,
             @RequestParam String state,
@@ -211,11 +217,11 @@ public class OAuth2CallbackController {
             log.info("Google OAuth2 callback received - code: {}, state: {}", code, state);
             
             // Google OAuth2 처리 로직 (필요시 구현)
-            return "redirect:http://localhost:5173/oauth2/callback/google";
+            return "redirect:" + frontendBaseUrl + "/oauth2/callback/google";
             
         } catch (Exception e) {
             log.error("Error handling Google OAuth2 callback", e);
-            return "redirect:http://localhost:5173/login?error=oauth2_callback_failed";
+            return "redirect:" + frontendBaseUrl + "/login?error=oauth2_callback_failed";
         }
     }
 

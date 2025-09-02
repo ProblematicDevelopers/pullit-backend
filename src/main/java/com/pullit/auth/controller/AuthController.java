@@ -5,6 +5,8 @@ import com.pullit.auth.dto.request.TokenRefreshRequest;
 import com.pullit.auth.dto.response.LoginResponse;
 import com.pullit.auth.dto.response.TokenValidationResponse;
 import com.pullit.auth.service.AuthService;
+import com.pullit.auth.service.OAuth2Service;
+import com.pullit.auth.exception.SocialLoginNewUserException;
 import com.pullit.auth.service.JwtService;
 import com.pullit.common.annotation.LoggingTrace;
 import com.pullit.common.annotation.RateLimited;
@@ -40,6 +42,8 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserService userService;
     private final TeacherService teacherService;
+    private final com.pullit.auth.service.ActiveSessionService activeSessionService;
+    private final OAuth2Service oAuth2Service;
 
     @PostMapping("/login")
     @Operation(
@@ -74,6 +78,35 @@ public class AuthController {
         return ResponseEntity.ok(
                 ApiResponse.success(response, "로그인 성공")
         );
+    }
+
+    @GetMapping("/oauth2/success")
+    @Operation(
+            summary = "OAuth2 성공 처리",
+            description = "세션에 저장된 소셜 정보를 기반으로 로그인 완료 또는 신규 사용자 정보를 반환합니다."
+    )
+    public ResponseEntity<ApiResponse<?>> oauth2Success(jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            // 세션 기반 소셜 정보 우선 처리
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            if (session != null) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> socialInfo = (java.util.Map<String, Object>) session.getAttribute("oauth2_social_info");
+                if (socialInfo != null) {
+                    var result = oAuth2Service.handleOAuth2LoginSuccess(socialInfo);
+                    return ResponseEntity.ok(ApiResponse.success(result, "LOGIN_SUCCESS"));
+                }
+            }
+
+            // 레거시 흐름 호환: Authentication 기반 처리 (명시적 캐스팅으로 오버로드 모호성 제거)
+            var loginResponse = oAuth2Service.handleOAuth2LoginSuccess((org.springframework.security.core.Authentication) null);
+            return ResponseEntity.ok(ApiResponse.success(loginResponse, "LOGIN_SUCCESS"));
+        } catch (SocialLoginNewUserException e) {
+            // 신규 사용자: 소셜 정보 반환, 메시지를 NEW_USER로 전달
+            return ResponseEntity.ok(ApiResponse.success(e.getSocialInfo(), "NEW_USER"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error("OAUTH2_FAILED", e.getMessage()));
+        }
     }
 
     @PostMapping("/register")
@@ -189,7 +222,7 @@ public class AuthController {
         String token = authHeader.substring(7);
 
         try {
-            // 토큰 검증
+            // 토큰 검증 (서명/만료)
             boolean isValid = jwtService.validateToken(token);
 
             if (isValid) {
@@ -197,6 +230,18 @@ public class AuthController {
                 Long userId = jwtService.getUserIdFromToken(token);
                 Instant expiresAt = jwtService.getExpirationFromToken(token);
                 boolean isRefreshToken = jwtService.isRefreshToken(token);
+                // 세션 일치 여부 확인 (sessionId가 있는 경우)
+                String sessionId = jwtService.getSessionIdFromToken(token);
+                if (sessionId != null) {
+                    boolean sessionOk = activeSessionService.isActiveSession(userId, sessionId);
+                    if (!sessionOk) {
+                        TokenValidationResponse response = TokenValidationResponse.builder()
+                                .valid(false)
+                                .error("Session invalid or taken over")
+                                .build();
+                        return ResponseEntity.ok(ApiResponse.success(response));
+                    }
+                }
 
                 // 남은 시간 계산
                 long remainingTime = expiresAt.getEpochSecond() - Instant.now().getEpochSecond();
@@ -236,14 +281,22 @@ public class AuthController {
             description = "로그아웃 처리. 현재는 클라이언트에서 토큰 삭제로 처리합니다."
     )
     @LoggingTrace
-    public ResponseEntity<ApiResponse<Void>> logout() {
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        // TODO: 서버 측 로그아웃 처리 (블랙리스트 등)
-        // 현재는 클라이언트에서 토큰 삭제로 처리
+        try {
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                Long userId = jwtService.getUserIdFromToken(token);
+                String sessionId = jwtService.getSessionIdFromToken(token);
+                activeSessionService.clearIfMatch(userId, sessionId);
+            }
+        } catch (Exception e) {
+            // 로깅만 하고 응답은 성공 처리 (idempotent)
+            log.warn("Logout processing error (ignored): {}", e.getMessage());
+        }
 
-        return ResponseEntity.ok(
-                ApiResponse.successWithoutData("로그아웃 성공")
-        );
+        return ResponseEntity.ok(ApiResponse.successWithoutData("로그아웃 성공"));
     }
     
     @GetMapping("/oauth2/authorization/{provider}")
@@ -275,7 +328,8 @@ public class AuthController {
         );
     }
     
-    @GetMapping("/oauth2/callback/{provider}")
+    // Legacy direct-callback endpoint retained for debugging; path changed to avoid conflict
+    @GetMapping("/oauth2/callback-direct/{provider}")
     @Operation(
             summary = "OAuth2 콜백 처리",
             description = "OAuth2 제공자로부터 콜백을 받아 처리합니다."

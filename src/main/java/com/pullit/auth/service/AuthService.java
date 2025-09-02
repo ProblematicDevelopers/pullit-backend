@@ -32,6 +32,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final TeacherService teacherService;
     private final StudentService studentService;
+    private final ActiveSessionService activeSessionService;
+    private final com.pullit.auth.config.JwtProperties jwtProperties;
 
 
     @Transactional
@@ -55,9 +57,13 @@ public class AuthService {
         userService.updateLastLogin(user.getId());
         log.info("Login successful for user: {}", user.getUsername());
 
-        // 5. JWT 토큰 생성
-        String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+        // 5. 단일 세션 ID 생성 및 저장 (기존 세션은 무효화)
+        String sessionId = java.util.UUID.randomUUID().toString();
+        activeSessionService.setActiveSession(user.getId(), sessionId, jwtProperties.getRefreshTokenExpiration());
+
+        // 6. JWT 토큰 생성 (sessionId 포함)
+        String accessToken = jwtService.generateAccessToken(user, sessionId);
+        String refreshToken = jwtService.generateRefreshToken(user, sessionId);
 
 
         return LoginResponse.builder()
@@ -193,8 +199,18 @@ public class AuthService {
 
         User user = userService.getUserById(userId);
 
-        String newAccessToken = jwtService.generateAccessToken(user);
-        String newRefreshToken = jwtService.generateRefreshToken(user);
+        // 세션 유효성 검사 (refresh token의 sessionId와 Redis의 현재 세션 비교)
+        String tokenSessionId = jwtService.getSessionIdFromToken(refreshToken);
+        if (tokenSessionId == null || !activeSessionService.isActiveSession(userId, tokenSessionId)) {
+            log.warn("Token refresh failed: Session mismatch or missing for user {}", userId);
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        // TTL 연장 (세션 유지)
+        activeSessionService.extendIfMatch(userId, tokenSessionId, jwtProperties.getRefreshTokenExpiration());
+
+        String newAccessToken = jwtService.generateAccessToken(user, tokenSessionId);
+        String newRefreshToken = jwtService.generateRefreshToken(user, tokenSessionId);
 
         log.info("Token refresh successful for user: {}", user.getUsername());
 
@@ -211,10 +227,8 @@ public class AuthService {
     @Transactional
     public void logout(Long userId) {
         log.info("Logout for user ID: {}", userId);
-
-        // TODO: Redis에서 Refresh Token 삭제
-        // TODO: Access Token 블랙리스트 추가 (선택사항)
-
+        // 서버 측 세션 제거
+        activeSessionService.clearActiveSession(userId);
 
     }
 
@@ -235,8 +249,10 @@ public class AuthService {
 
         userService.updateLastLogin(user.getId());
 
-        String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+        String sessionId = java.util.UUID.randomUUID().toString();
+        activeSessionService.setActiveSession(user.getId(), sessionId, jwtProperties.getRefreshTokenExpiration());
+        String accessToken = jwtService.generateAccessToken(user, sessionId);
+        String refreshToken = jwtService.generateRefreshToken(user, sessionId);
 
         return LoginResponse.builder()
                 .accessToken(accessToken)
@@ -281,9 +297,11 @@ public class AuthService {
         // 마지막 로그인 시간 업데이트
         userService.updateLastLogin(user.getId());
 
-        // JWT 토큰 생성
-        String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+        // 세션 생성/갱신 후 JWT 생성
+        String sessionId = java.util.UUID.randomUUID().toString();
+        activeSessionService.setActiveSession(user.getId(), sessionId, jwtProperties.getRefreshTokenExpiration());
+        String accessToken = jwtService.generateAccessToken(user, sessionId);
+        String refreshToken = jwtService.generateRefreshToken(user, sessionId);
 
         log.info("Social login successful for user: {}", user.getUsername());
 
