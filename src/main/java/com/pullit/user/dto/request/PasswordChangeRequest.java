@@ -1,13 +1,15 @@
 package com.pullit.user.dto.request;
 
-
-import com.pullit.common.annotation.ValidPassword;
+import com.pullit.common.constants.ValidationConstants;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import static com.pullit.common.constants.ValidationConstants.*;
 
 @Getter
 @Builder
@@ -20,7 +22,8 @@ public class PasswordChangeRequest {
     private String oldPassword;
 
     @NotBlank(message = "새 비밀번호는 필수입니다")
-    @ValidPassword
+    @Pattern(regexp = PATTERN_PASSWORD, message = MSG_INVALID_PASSWORD)
+    @Size(min = MIN_PASSWORD_LENGTH, max = MAX_PASSWORD_LENGTH, message = "비밀번호는 8~100자여야 합니다")
     @Schema(description = "새 비밀번호", example = "NewPassword123!")
     private String newPassword;
 

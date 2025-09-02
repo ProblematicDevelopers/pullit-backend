@@ -37,6 +37,7 @@ public enum ErrorCode {
     INVALID_PASSWORD("USER_004", "비밀번호 형식이 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
     PASSWORD_MISMATCH("USER_005", "비밀번호가 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
     PROFILE_UPDATE_FAILED("USER_006", "프로필 업데이트에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_VERIFICATION_CODE("USER_007", "인증번호가 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
 
     // ========== 파일 관련 에러 (FILE) ==========
     FILE_NOT_FOUND("FILE_001", "파일을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),

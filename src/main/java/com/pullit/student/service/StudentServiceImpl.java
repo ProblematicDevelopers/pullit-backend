@@ -1,5 +1,6 @@
 package com.pullit.student.service;
 
+import com.pullit.student.dto.request.StudentUpdateRequest;
 import com.pullit.student.dto.response.StudentResponse;
 import com.pullit.student.entity.Student;
 import com.pullit.student.repository.StudentRepository;
@@ -31,6 +32,8 @@ public class StudentServiceImpl implements StudentService {
                 .classGroupId(student.getClassGroupID())
                 .studentNo(student.getStudentNo())
                 .grade(student.getGrade())
+                .schoolId(student.getSchool() != null ? student.getSchool().getId() : null)
+                .schoolName(student.getSchool() != null ? student.getSchool().getSchoolName() : null)
                 .build();
     }
 
@@ -74,5 +77,54 @@ public class StudentServiceImpl implements StudentService {
         log.info("Student created with ID: {}", savedStudent.getUserId());
         
         return savedStudent;
+    }
+
+    @Override
+    @Transactional
+    public StudentResponse updateStudent(Long userId, StudentUpdateRequest request) {
+        log.info("Updating student for user ID: {}", userId);
+        
+        Student student = studentRepository.findByUserId(userId);
+        if (student == null) {
+            throw new RuntimeException("Student not found for user ID: " + userId);
+        }
+        
+        // 학년 정보 업데이트
+        if (request.getGrade() != null) {
+            student.setGrade(request.getGrade());
+            log.info("Updated grade for student: {}", request.getGrade().getName());
+        }
+        
+        // 학교 정보 업데이트
+        if (request.getSchoolId() != null) {
+            School school = schoolRepository.findById(request.getSchoolId()).orElse(null);
+            if (school != null) {
+                student.setSchool(school);
+                log.info("Updated school for student: {}", school.getSchoolName());
+            }
+        } else if (request.getSchoolName() != null) {
+            // 학교명으로 학교 찾기
+            List<School> schools = schoolRepository.findBySchoolNameContaining(request.getSchoolName());
+            if (!schools.isEmpty()) {
+                School school = schools.stream()
+                    .filter(s -> s.getSchoolName().equals(request.getSchoolName()))
+                    .findFirst()
+                    .orElse(schools.get(0));
+                student.setSchool(school);
+                log.info("Updated school for student: {}", school.getSchoolName());
+            }
+        }
+        
+        Student updatedStudent = studentRepository.save(student);
+        log.info("Student updated successfully for user ID: {}", userId);
+        
+        return StudentResponse.builder()
+                .userId(updatedStudent.getUserId())
+                .classGroupId(updatedStudent.getClassGroupID())
+                .studentNo(updatedStudent.getStudentNo())
+                .grade(updatedStudent.getGrade())
+                .schoolId(updatedStudent.getSchool() != null ? updatedStudent.getSchool().getId() : null)
+                .schoolName(updatedStudent.getSchool() != null ? updatedStudent.getSchool().getSchoolName() : null)
+                .build();
     }
 }

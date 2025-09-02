@@ -8,4 +8,5 @@ import java.util.List;
 public interface SchoolService {
     List<School> findBySchoolNameContaining(String schoolName);
     List<School> findAll();
+    School findById(Long schoolId);
 }
