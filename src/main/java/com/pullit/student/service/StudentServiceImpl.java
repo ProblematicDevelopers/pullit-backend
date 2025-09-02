@@ -6,10 +6,13 @@ import com.pullit.student.repository.StudentRepository;
 import com.pullit.student.service.StudentService;
 import com.pullit.user.dto.request.StudentInfo;
 import com.pullit.user.entity.User;
+import com.pullit.classes.entity.School;
+import com.pullit.classes.repository.SchoolRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -18,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudentServiceImpl implements StudentService {
 
     private final StudentRepository studentRepository;
+    private final SchoolRepository schoolRepository;
 
     @Override
     public StudentResponse findByUserId(Long userId) {
@@ -41,12 +45,29 @@ public class StudentServiceImpl implements StudentService {
             return studentRepository.findByUserId(user.getId());
         }
         
+        // 학교 정보 처리
+        School school = null;
+        if (studentInfo != null && studentInfo.getSchoolId() != null) {
+            school = schoolRepository.findById(studentInfo.getSchoolId()).orElse(null);
+        } else if (studentInfo != null && studentInfo.getSchoolName() != null) {
+            // 학교명으로 학교 찾기 (정확한 이름으로 찾기)
+            List<School> schools = schoolRepository.findBySchoolNameContaining(studentInfo.getSchoolName());
+            if (!schools.isEmpty()) {
+                // 정확한 이름과 일치하는 학교 찾기
+                school = schools.stream()
+                    .filter(s -> s.getSchoolName().equals(studentInfo.getSchoolName()))
+                    .findFirst()
+                    .orElse(schools.get(0)); // 정확한 이름이 없으면 첫 번째 학교 사용
+            }
+        }
+        
         Student student = Student.builder()
                 .userId(user.getId())
                 // user는 설정하지 않음 (insertable=false, updatable=false)
                 .classGroupID(studentInfo != null ? studentInfo.getClassGroupId() : null)
                 .studentNo(studentInfo != null ? studentInfo.getStudentNo() : null)
                 .grade(studentInfo != null ? studentInfo.getGrade() : null)
+                .school(school)
                 .build();
         
         Student savedStudent = studentRepository.save(student);
