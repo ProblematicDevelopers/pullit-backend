@@ -2,6 +2,8 @@ package com.pullit.teacher.service;
 
 import com.pullit.teacher.entity.Teacher;
 import com.pullit.teacher.repository.TeacherRepository;
+import com.pullit.teacher.dto.response.TeacherResponse;
+import com.pullit.teacher.dto.request.TeacherUpdateRequest;
 import com.pullit.user.dto.request.TeacherInfo;
 import com.pullit.user.entity.User;
 import com.pullit.common.embedded.StringCodeNamePair;
@@ -128,6 +130,83 @@ public class TeacherService {
                 return null;
             }
         }
+    }
+    
+    /**
+     * 사용자 ID로 선생님 정보 조회
+     */
+    public TeacherResponse getTeacherByUserId(Long userId) {
+        log.info("Getting teacher info for user ID: {}", userId);
+        
+        Teacher teacher = teacherRepository.findByUserIdWithUser(userId).orElse(null);
+        if (teacher == null) {
+            log.warn("Teacher not found for user ID: {}", userId);
+            return null;
+        }
+        
+        return TeacherResponse.from(teacher);
+    }
+    
+    /**
+     * 선생님 정보 업데이트
+     */
+    @Transactional
+    public TeacherResponse updateTeacher(Long userId, TeacherUpdateRequest request) {
+        log.info("Updating teacher info for user ID: {}", userId);
+        
+        Teacher teacher = teacherRepository.findByUserIdWithUser(userId).orElse(null);
+        if (teacher == null) {
+            log.warn("Teacher not found for user ID: {}", userId);
+            return null;
+        }
+        
+        // 과목 정보 업데이트
+        if (request.getAreaCode() != null) {
+            String areaName;
+            // 과목 코드에 따른 이름 설정
+            switch (request.getAreaCode()) {
+                case "MA":
+                    areaName = "수학";
+                    break;
+                case "KO":
+                    areaName = "국어";
+                    break;
+                case "EN":
+                    areaName = "영어";
+                    break;
+                case "SC":
+                    areaName = "과학";
+                    break;
+                case "SO":
+                    areaName = "사회";
+                    break;
+                default:
+                    areaName = "기타";
+            }
+            
+            StringCodeNamePair area = StringCodeNamePair.builder()
+                .code(request.getAreaCode())
+                .name(areaName)
+                .build();
+            teacher.setArea(area);
+        }
+        
+        // 학교 정보 업데이트
+        if (request.getSchoolName() != null) {
+            School school = resolveSchoolByName(request.getSchoolName());
+            teacher.setSchool(school);
+        }
+        
+        Teacher savedTeacher = teacherRepository.save(teacher);
+        return TeacherResponse.from(savedTeacher);
+    }
+    
+    private School resolveSchoolByName(String schoolName) {
+        List<School> schools = schoolRepository.findBySchoolNameContaining(schoolName);
+        if (!schools.isEmpty()) {
+            return schools.get(0);
+        }
+        return null;
     }
     
     /**

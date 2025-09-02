@@ -35,4 +35,10 @@ public interface UserService {
     // 사용자 삭제
     void deleteUser(Long userId);
 
+    // 아이디 찾기
+    String findUsernameByFullNameAndPhone(String fullName, String phone);
+
+    // 비밀번호 찾기 및 변경
+    void resetPassword(String username, String phone, String verificationCode, String newPassword);
+
 }

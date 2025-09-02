@@ -5,6 +5,8 @@ import com.pullit.common.annotation.LoggingTrace;
 import com.pullit.common.annotation.RateLimited;
 import com.pullit.common.dto.response.ApiResponse;
 import com.pullit.common.exception.ErrorCode;
+import com.pullit.user.dto.request.FindPasswordRequest;
+import com.pullit.user.dto.request.FindUsernameRequest;
 import com.pullit.user.dto.request.PasswordChangeRequest;
 import com.pullit.user.dto.request.UserUpdateRequest;
 import com.pullit.user.dto.response.UserResponse;
@@ -17,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.TimeUnit;
@@ -67,7 +70,10 @@ public class UserController {
 
         userService.changePassword(userDetails.getUserId(), request);
 
-        return ResponseEntity.ok(ApiResponse.successWithoutData("비밀번호가 변경되었습니다"));
+        // 비밀번호 변경 후 세션 무효화 (로그아웃 처리)
+        SecurityContextHolder.clearContext();
+
+        return ResponseEntity.ok(ApiResponse.successWithoutData("비밀번호가 변경되었습니다. 보안을 위해 다시 로그인해주세요."));
     }
 
     @GetMapping("/check/username/{username}")
@@ -88,6 +94,27 @@ public class UserController {
 
         return ResponseEntity.ok(ApiResponse.success(!exists,
                 exists ? "이미 사용중인 이메일입니다" : "사용 가능한 이메일입니다"));
+    }
+
+    @PostMapping("/find/username")
+    @Operation(summary = "아이디 찾기", description = "이름과 휴대폰 번호로 아이디를 찾습니다")
+    public ResponseEntity<ApiResponse<String>> findUsername(@Valid @RequestBody FindUsernameRequest request) {
+        String username = userService.findUsernameByFullNameAndPhone(request.getFullName(), request.getPhone());
+        return ResponseEntity.ok(ApiResponse.success(username, "아이디를 찾았습니다"));
+    }
+
+    @PostMapping("/find/password")
+    @Operation(summary = "비밀번호 찾기", description = "이름, 아이디, 휴대폰 번호, 인증번호로 비밀번호를 재설정합니다")
+    public ResponseEntity<ApiResponse<Void>> findPassword(@Valid @RequestBody FindPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(ErrorCode.PASSWORD_MISMATCH));
+        }
+
+        userService.resetPassword(request.getUsername(), request.getPhone(), 
+                                request.getVerificationCode(), request.getNewPassword());
+        
+        return ResponseEntity.ok(ApiResponse.successWithoutData("비밀번호가 성공적으로 변경되었습니다"));
     }
 
 }

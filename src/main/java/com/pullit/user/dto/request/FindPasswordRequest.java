@@ -9,17 +9,26 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
 import static com.pullit.common.constants.ValidationConstants.*;
 
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "비밀번호 변경 요청")
-public class PasswordChangeRequest {
-    @NotBlank(message = "현재 비밀번호는 필수입니다")
-    @Schema(description = "현재 비밀번호", example = "OldPassword123!")
-    private String oldPassword;
+@Schema(description = "비밀번호 찾기 요청")
+public class FindPasswordRequest {
+    @NotBlank(message = "아이디는 필수입니다")
+    @Schema(description = "아이디", example = "user123")
+    private String username;
+
+    @NotBlank(message = "휴대폰 번호는 필수입니다")
+    @Schema(description = "휴대폰 번호", example = "010-1234-5678")
+    private String phone;
+
+    @NotBlank(message = "인증번호는 필수입니다")
+    @Schema(description = "인증번호", example = "123456")
+    private String verificationCode;
 
     @NotBlank(message = "새 비밀번호는 필수입니다")
     @Pattern(regexp = PATTERN_PASSWORD, message = MSG_INVALID_PASSWORD)
@@ -27,12 +36,7 @@ public class PasswordChangeRequest {
     @Schema(description = "새 비밀번호", example = "NewPassword123!")
     private String newPassword;
 
-    @NotBlank(message = "비밀번호 확인은 필수입니다")
+    @NotBlank(message = "새 비밀번호 확인은 필수입니다")
     @Schema(description = "새 비밀번호 확인", example = "NewPassword123!")
     private String confirmPassword;
-
-    public boolean isPasswordMatching() {
-        return newPassword != null && newPassword.equals(confirmPassword);
-    }
-
 }

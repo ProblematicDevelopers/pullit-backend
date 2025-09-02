@@ -14,4 +14,6 @@ public class StudentResponse {
     private Long classGroupId;
     private Long studentNo;
     private StringCodeNamePair grade;
+    private Long schoolId;
+    private String schoolName;
 }
