@@ -16,4 +16,24 @@ public interface SubjectRepository extends JpaRepository<Subject, Long>{
            "(:areaCode IS NULL OR s.area.code = :areaCode)")
     List<Subject> findByGradeCodeAndAreaCode(@Param("gradeCode") String gradeCode, 
                                               @Param("areaCode") String areaCode);
+
+    // 과목별 문항 수 집계 - 전체
+    @Query("SELECT s.subjectId AS subjectId, COUNT(i) AS itemCount " +
+           "FROM Subject s LEFT JOIN s.items i " +
+           "GROUP BY s.subjectId")
+    List<SubjectRepository.SubjectItemCountProjection> countItemsAll();
+
+    // 과목별 문항 수 집계 - 학년/과목 코드로 필터
+    @Query("SELECT s.subjectId AS subjectId, COUNT(i) AS itemCount " +
+           "FROM Subject s LEFT JOIN s.items i " +
+           "WHERE (:gradeCode IS NULL OR s.grade.code = :gradeCode) " +
+           "AND (:areaCode IS NULL OR s.area.code = :areaCode) " +
+           "GROUP BY s.subjectId")
+    List<SubjectRepository.SubjectItemCountProjection> countItemsByGradeAndArea(@Param("gradeCode") String gradeCode,
+                                                                                @Param("areaCode") String areaCode);
+
+    interface SubjectItemCountProjection {
+        Long getSubjectId();
+        Long getItemCount();
+    }
 }

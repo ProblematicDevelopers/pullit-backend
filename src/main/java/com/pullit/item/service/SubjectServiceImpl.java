@@ -25,9 +25,21 @@ public class SubjectServiceImpl implements SubjectService {
         timeUnit = java.util.concurrent.TimeUnit.MINUTES
     )
     public List<SubjectResponse> findAllSubjectsOnly() {
-        return subjectRepository.findAll().stream()
+        // 1) 기본 과목 정보 조회 (N+1 방지를 위해 itemCount는 여기서 채우지 않음)
+        List<Subject> subjects = subjectRepository.findAll();
+        List<SubjectResponse> responses = subjects.stream()
                 .map(SubjectResponse::from)
                 .toList();
+
+        // 2) 과목별 문항 수를 단일 집계 쿼리로 조회 후 매핑
+        var counts = subjectRepository.countItemsAll();
+        java.util.Map<Long, Integer> countMap = new java.util.HashMap<>();
+        for (var p : counts) {
+            countMap.put(p.getSubjectId(), p.getItemCount() != null ? p.getItemCount().intValue() : 0);
+        }
+
+        responses.forEach(r -> r.setItemCount(countMap.getOrDefault(r.getSubjectId(), 0)));
+        return responses;
     }
 
     @Override
@@ -38,7 +50,21 @@ public class SubjectServiceImpl implements SubjectService {
         condition = "#gradeCode != null && #areaCode != null"
     )
     public List<SubjectResponse> findByGradeCodeAndAreaCode(String gradeCode, String areaCode) {
-        return subjectRepository.findByGradeCodeAndAreaCode(gradeCode, areaCode).stream().map(SubjectResponse::from).toList();
+        // 1) 필터 조건으로 과목 조회
+        List<Subject> subjects = subjectRepository.findByGradeCodeAndAreaCode(gradeCode, areaCode);
+        List<SubjectResponse> responses = subjects.stream()
+                .map(SubjectResponse::from)
+                .toList();
+
+        // 2) 같은 필터로 문항 수 집계 후 매핑
+        var counts = subjectRepository.countItemsByGradeAndArea(gradeCode, areaCode);
+        java.util.Map<Long, Integer> countMap = new java.util.HashMap<>();
+        for (var p : counts) {
+            countMap.put(p.getSubjectId(), p.getItemCount() != null ? p.getItemCount().intValue() : 0);
+        }
+
+        responses.forEach(r -> r.setItemCount(countMap.getOrDefault(r.getSubjectId(), 0)));
+        return responses;
     }
 
     @Override
