@@ -122,7 +122,6 @@ public class FileHistoryController {
         
         log.info("File history images request: fileHistoryId={}, userId={}", 
                 fileHistoryId, currentUser.getUserId());
-        
         List<PdfImageDTO> images = fileHistoryService.getFileHistoryImages(fileHistoryId, currentUser);
         
         return ResponseEntity.ok(ApiResponse.success(images, "파일 히스토리 이미지 목록 조회 완료"));
