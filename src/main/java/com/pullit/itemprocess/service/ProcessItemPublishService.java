@@ -1,5 +1,17 @@
 package com.pullit.itemprocess.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.pullit.chapter.repository.ChapterRepository;
 import com.pullit.common.exception.BusinessException;
 import com.pullit.common.exception.ErrorCode;
@@ -11,26 +23,20 @@ import com.pullit.item.embedded.ChapterHierarchy;
 import com.pullit.item.embedded.CodeNamePair;
 import com.pullit.item.entity.Subject;
 import com.pullit.itemprocess.dto.request.HtmlEditorPayload;
-import com.pullit.itemprocess.entity.ProcessedItem;
-import com.pullit.itemprocess.entity.ProcessItemMetadata;
 import com.pullit.itemprocess.entity.ProcessItemHtmlData;
 import com.pullit.itemprocess.entity.ProcessItemImageData;
+import com.pullit.itemprocess.entity.ProcessItemMetadata;
+import com.pullit.itemprocess.entity.ProcessedItem;
 import com.pullit.itemprocess.enums.DifficultyLevel;
 import com.pullit.itemprocess.enums.ItemType;
-import com.pullit.itemprocess.repository.ProcessedItemRepository;
-import com.pullit.itemprocess.repository.ProcessItemMetadataRepository;
 import com.pullit.itemprocess.repository.ProcessItemHtmlDataRepository;
 import com.pullit.itemprocess.repository.ProcessItemImageDataRepository;
+import com.pullit.itemprocess.repository.ProcessItemMetadataRepository;
+import com.pullit.itemprocess.repository.ProcessedItemRepository;
+
 import io.micrometer.common.lang.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Safelist;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -125,9 +131,9 @@ public class ProcessItemPublishService {
         ProcessItemHtmlData html = buildHtmlDataFrom(histories, pi);
         ProcessItemImageData img = buildImageDataFrom(histories);
 
-        // 3-1) FE 에디터 값이 오면 override(+sanitize) 적용
+        // 3-1) FE 에디터 값이 오면 TinyMCE 보안 강화 적용
         if (editorPayload != null) {
-            applyEditor(html, editorPayload);
+            applyTinyMceEditor(html, editorPayload);
         }
 
         // 4) 부모-자식 결합 (연관 설정) - @OneToOne(or @OneToMany) + cascade=ALL 전제
@@ -207,6 +213,53 @@ public class ProcessItemPublishService {
         html.setQuestion( nonBlankOr(html.getQuestion(), firstNonBlank(p.getQuestionText(), extractText(html.getQuestionHtml()))) );
         html.setAnswer( nonBlankOr(html.getAnswer(),     firstNonBlank(p.getAnswerText(),   extractText(html.getAnswerHtml()))) );
         html.setExplainText( nonBlankOr(html.getExplainText(), firstNonBlank(p.getExplainText(), extractText(html.getExplainHtml()))) );
+    }
+
+    /** TinyMCE 에디터 전용 HTML 처리 (보안 강화) */
+    private void applyTinyMceEditor(ProcessItemHtmlData html, HtmlEditorPayload p) {
+        log.info("[TinyMCE] Applying editor HTML with enhanced security");
+        
+        // TinyMCE용 강화된 보안 Safelist
+        Safelist tinyMceSafe = createTinyMceSafelist();
+        
+        // 필드별 override (강화된 보안 적용)
+        html.setPassageHtml( pickSanitizedOr(html.getPassageHtml(),  p.getPassageHtml(),  tinyMceSafe) );
+        html.setQuestionHtml( pickSanitizedOr(html.getQuestionHtml(), p.getQuestionHtml(), tinyMceSafe) );
+        html.setChoice1Html( pickSanitizedOr(html.getChoice1Html(),  p.getChoice1Html(),  tinyMceSafe) );
+        html.setChoice2Html( pickSanitizedOr(html.getChoice2Html(),  p.getChoice2Html(),  tinyMceSafe) );
+        html.setChoice3Html( pickSanitizedOr(html.getChoice3Html(),  p.getChoice3Html(),  tinyMceSafe) );
+        html.setChoice4Html( pickSanitizedOr(html.getChoice4Html(),  p.getChoice4Html(),  tinyMceSafe) );
+        html.setChoice5Html( pickSanitizedOr(html.getChoice5Html(),  p.getChoice5Html(),  tinyMceSafe) );
+        html.setAnswerHtml(  pickSanitizedOr(html.getAnswerHtml(),   p.getAnswerHtml(),   tinyMceSafe) );
+        html.setExplainHtml( pickSanitizedOr(html.getExplainHtml(),  p.getExplainHtml(),  tinyMceSafe) );
+
+        // TEXT 컬럼 채우기 (기존과 동일)
+        html.setPassage( nonBlankOr(html.getPassage(),  firstNonBlank(p.getPassageText(),  extractText(html.getPassageHtml()))) );
+        html.setQuestion( nonBlankOr(html.getQuestion(), firstNonBlank(p.getQuestionText(), extractText(html.getQuestionHtml()))) );
+        html.setAnswer( nonBlankOr(html.getAnswer(),     firstNonBlank(p.getAnswerText(),   extractText(html.getAnswerHtml()))) );
+        html.setExplainText( nonBlankOr(html.getExplainText(), firstNonBlank(p.getExplainText(), extractText(html.getExplainHtml()))) );
+    }
+
+    /** TinyMCE용 강화된 보안 Safelist 생성 */
+    private Safelist createTinyMceSafelist() {
+        return Safelist.relaxed()
+                .addTags("span","div","p","br","ul","ol","li","sup","sub",
+                        "table","thead","tbody","tr","td","th","img","strong","em","u")
+                // 안전한 속성만 허용 (style 제거로 인라인 스타일 차단)
+                .addAttributes("span","class","data-latex")
+                .addAttributes("div","class")
+                .addAttributes("p","class")
+                .addAttributes("table","class","border","cellpadding","cellspacing")
+                .addAttributes("td","class","colspan","rowspan","align","valign")
+                .addAttributes("th","class","colspan","rowspan","align","valign")
+                .addAttributes("img","src","alt","width","height")
+                // HTTPS와 프록시 URL만 허용 (data: 차단)
+                .addProtocols("img", "src", "https")
+                .addProtocols("img", "src", "/api/image/proxy") // 프록시 URL 허용
+                // 모든 이벤트 핸들러 제거
+                .removeAttributes("*", "onclick", "onload", "onerror", "onmouseover", "onmouseout", 
+                                "onfocus", "onblur", "onchange", "onsubmit", "onreset", "style");
+                // javascript: 프로토콜은 addProtocols로 허용된 것만 사용하므로 별도 제거 불필요
     }
 
     private void validateLinks(ProcessedItem pi, List<OcrHistory> histories) {

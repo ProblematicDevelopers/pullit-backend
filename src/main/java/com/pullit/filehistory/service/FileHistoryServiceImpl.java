@@ -5,7 +5,9 @@ import com.pullit.common.exception.BusinessException;
 import com.pullit.common.exception.ErrorCode;
 import com.pullit.common.file.entity.FileMetadata;
 import com.pullit.common.file.repository.FileMetadataRepository;
+import com.pullit.common.s3.enums.S3Directory;
 import com.pullit.common.s3.service.S3Service;
+import com.pullit.common.s3.dto.S3UploadRequest;
 import com.pullit.filehistory.dto.FileHistoryDTO;
 import com.pullit.filehistory.dto.PdfImageDTO;
 import com.pullit.filehistory.entity.FileHistory;
@@ -13,12 +15,15 @@ import com.pullit.filehistory.entity.PdfImage;
 import com.pullit.filehistory.repository.FileHistoryRepository;
 import com.pullit.filehistory.repository.PdfImageRepository;
 import com.pullit.item.entity.Subject;
+import com.pullit.itemprocess.entity.ProcessedItem;
+import com.pullit.itemprocess.repository.ProcessedItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.util.*;
@@ -32,6 +37,7 @@ public class FileHistoryServiceImpl implements FileHistoryService {
     private final FileHistoryRepository fileHistoryRepository;
     private final FileMetadataRepository fileMetadataRepository;
     private final PdfImageRepository pdfImageRepository;
+    private final ProcessedItemRepository processedItemRepository;
     private final S3Service s3Service;
 
     @Override
@@ -145,4 +151,92 @@ public class FileHistoryServiceImpl implements FileHistoryService {
                 })
                 .collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional
+    public String uploadTinyMceImage(MultipartFile file, CustomUserDetails currentUser) {
+        log.info("TinyMCE image upload: fileName={}, size={}, userId={}", 
+                file.getOriginalFilename(), file.getSize(), currentUser.getUserId());
+        
+        // 1. 파일 검증
+        validateImageFile(file);
+        
+        // 2. S3 업로드 (권한 검증은 인증된 사용자만 접근 가능하므로 불필요)
+        try {
+            String originalFilename = file.getOriginalFilename();
+            String fileName = String.format("tinymce_%d_%s", currentUser.getUserId(), 
+                    originalFilename != null ? originalFilename : "image.jpg");
+            
+            // TinyMCE 이미지는 Public으로 업로드 (영구 URL 사용)
+            S3UploadRequest request = S3UploadRequest.builder()
+                    .fileData(file.getBytes())
+                    .fileName(fileName)
+                    .directory(S3Directory.IMAGE_QUESTION)
+                    .publicRead(true)  // Public 읽기 권한 설정
+                    .build();
+            var uploadResponse = s3Service.upload(request);
+            String s3Key = uploadResponse.getS3Key();
+            String s3Url = uploadResponse.getPublicUrl();
+
+            // 4. FileMetadata 생성 (TinyMCE 업로드용, FileHistory 없이)
+            String extension = originalFilename != null && originalFilename.contains(".") 
+                    ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
+            
+            FileMetadata fileMetadata = FileMetadata.builder()
+                    .originalFilename(originalFilename)
+                    .s3Key(s3Key)
+                    .s3Url(s3Url)
+                    .fileSize(file.getSize())
+                    .contentType(file.getContentType())
+                    .fileExtension(extension)
+                    .directoryType(S3Directory.IMAGE_QUESTION)
+                    .uploadedBy(currentUser.getUserId())
+                    .entityType("ProcessedItem")
+                    .entityId(0L)
+                    .isPublic(true)  // Public 업로드로 변경
+                    .build();
+
+            fileMetadataRepository.save(fileMetadata);
+
+            // 5. 깔끔한 Public URL 반환 (확장자 뒤 쿼리 제거)
+//            String cleanPublicUrl = cleanImageUrl(s3Url);
+            
+            log.info("TinyMCE image upload completed: s3Key={}, publicUrl={}", s3Key, s3Url);
+            return s3Url;
+            
+        } catch (Exception e) {
+            log.error("TinyMCE image upload failed: {}", e.getMessage(), e);
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+    
+    private void validateImageFile(MultipartFile file) {
+        // MIME 타입 검증
+        List<String> allowedTypes = Arrays.asList("image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/svg+xml");
+        if (!allowedTypes.contains(file.getContentType())) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        // 파일 크기 검증 (5MB)
+        long maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.getSize() > maxSize) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        // 빈 파일 검증
+        if (file.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+    
+//    private String cleanImageUrl(String s3Url) {
+//        if (s3Url == null) return null;
+//
+//        // 확장자 패턴 매칭: .jpg, .png, .svg, .gif, .webp 등
+//        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("^(.*\\.(jpg|jpeg|png|gif|webp|svg))",
+//                java.util.regex.Pattern.CASE_INSENSITIVE);
+//        java.util.regex.Matcher matcher = pattern.matcher(s3Url);
+//
+//        return matcher.find() ? matcher.group(1) : s3Url;
+//    }
 }
