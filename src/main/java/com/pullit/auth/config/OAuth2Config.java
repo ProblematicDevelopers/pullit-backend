@@ -19,6 +19,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class OAuth2Config {
 
+    private final com.pullit.common.config.properties.SecurityProperties securityProperties;
+
     @Bean
     @Order(1) // OAuth2 필터 체인이 먼저 실행되도록 설정
     public SecurityFilterChain oauth2FilterChain(HttpSecurity http) throws Exception {
@@ -39,27 +41,15 @@ public class OAuth2Config {
     @Bean
     public CorsConfigurationSource oauth2CorsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // 허용할 origin 설정
-        configuration.addAllowedOrigin("http://localhost:5173");
-        configuration.addAllowedOrigin("http://localhost:3000");
-        configuration.addAllowedOrigin("http://localhost:5174");
-        
-        // 허용할 HTTP 메서드 설정
+        var corsProps = securityProperties.getCors();
+        configuration.setAllowedOrigins(corsProps.getAllowedOrigins());
         configuration.addAllowedMethod("*");
-        
-        // 허용할 헤더 설정
         configuration.addAllowedHeader("*");
-        
-        // 쿠키 허용
-        configuration.setAllowCredentials(true);
-        
-        // preflight 요청 캐시 시간
-        configuration.setMaxAge(3600L);
-        
+        configuration.setAllowCredentials(corsProps.isAllowCredentials());
+        configuration.setMaxAge(corsProps.getMaxAge());
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-        
         return source;
     }
-} 
+}

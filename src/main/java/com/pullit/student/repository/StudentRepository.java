@@ -39,6 +39,6 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     // 학교별 학급 미배정 학생 조회
     List<Student> findBySchoolIdAndClassGroupIDIsNull(Long schoolId);
     
-    // 학교별 학급 미배정 학생 조회 (학년 필터링)
-    List<Student> findBySchoolIdAndGradeAndClassGroupIDIsNull(Long schoolId, Long grade);
+    // 학교별 학급 미배정 학생 조회 (학년 코드 필터링: 07, 08, 09)
+    List<Student> findBySchoolIdAndGrade_CodeAndClassGroupIDIsNull(Long schoolId, String gradeCode);
 }
