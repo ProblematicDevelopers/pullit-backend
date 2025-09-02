@@ -56,7 +56,9 @@ public class SubjectResponse {
                 .termName(nameOf(s.getTerm()))
                 .areaCode(codeOf(s.getArea()))
                 .areaName(nameOf(s.getArea()))
-                .itemCount(s.getItemCount())
+                // 주의: s.getItemCount()는 LAZY 컬렉션 초기화를 유발하여 N+1 SELECT를 초래할 수 있음
+                // 기본값(null)로 두고 Service 레이어에서 집계 쿼리 결과로 채운다
+                .itemCount(null)
                 .build();
     }
 
