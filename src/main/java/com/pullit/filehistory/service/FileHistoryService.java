@@ -6,6 +6,7 @@ import com.pullit.filehistory.dto.PdfImageDTO;
 import com.pullit.filehistory.entity.FileHistory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -17,4 +18,6 @@ public interface FileHistoryService {
     List<PdfImageDTO> getFileHistoryImages(Long fileHistoryId, CustomUserDetails currentUser);
 
     FileHistoryDTO getFileHistory(Long fileHistoryId, CustomUserDetails currentUser);
+    
+    String uploadTinyMceImage(MultipartFile file, CustomUserDetails currentUser);
 }
