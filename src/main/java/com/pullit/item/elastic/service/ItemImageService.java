@@ -35,7 +35,7 @@ public class ItemImageService {
 
     private static final String INDEX_NAME = "item_image";
     private static final int MAX_SEARCH_SIZE = 10000;
-
+    private final Random random = new Random();
     private final ElasticsearchClient elasticsearchClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -217,6 +217,7 @@ public class ItemImageService {
                         .filter(item -> !alreadySelected.contains(item.getItemId()))
                         .collect(Collectors.toList());
             }
+            Collections.shuffle(candidates, random);
 
             int actualSelected = Math.min(neededCount, candidates.size());
             List<ItemImageDocument> selectedForThisDifficulty = candidates.subList(0, actualSelected);
@@ -399,6 +400,7 @@ public class ItemImageService {
             // sterms or lterms handling
             processPassageAggregation(passagesAgg, difficultyCode, allCandidates);
         }
+        Collections.shuffle(allCandidates, random);
 
         return allCandidates;
     }
@@ -503,6 +505,8 @@ public class ItemImageService {
                     .map(Hit::source)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
+
+            Collections.shuffle(items, random);
 
             // 중복 제거
             if (context.getRequest().isAvoidDuplicate()) {
@@ -952,6 +956,7 @@ public class ItemImageService {
                     .filter(item -> !context.getSelectedItemIds().contains(item.getItemId()))
                     .collect(Collectors.toList());
         }
+        Collections.shuffle(candidates, random);
 
         int actualSelected = Math.min(needCount, candidates.size());
         List<ItemImageDocument> selected = candidates.subList(0, actualSelected);
