@@ -142,5 +142,20 @@ public class FileHistoryController {
         return ResponseEntity.ok(ApiResponse.success(fileHistory, "파일 히스토리 목록 조회 완료"));
     }
 
+    @Operation(summary = "TinyMCE 에디터 이미지 업로드", description = "TinyMCE 에디터에서 이미지 업로드 시 사용 (사용자 기반)")
+    @PostMapping(value = "/tinymce-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<String>> uploadTinyMceImage(
+            @Parameter(description = "업로드할 이미지 파일", required = true)
+            @RequestParam("file") MultipartFile file,
+            @AuthUser CustomUserDetails currentUser) {
+        
+        log.info("TinyMCE image upload request: fileName={}, size={}, userId={}", 
+                file.getOriginalFilename(), file.getSize(), currentUser.getUserId());
+        
+        String imageUrl = fileHistoryService.uploadTinyMceImage(file, currentUser);
+        
+        return ResponseEntity.ok(ApiResponse.success(imageUrl, "이미지 업로드가 완료되었습니다."));
+    }
+
 
 }
