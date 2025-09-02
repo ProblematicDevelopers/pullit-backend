@@ -19,4 +19,7 @@ public class CbtExamResponse {
     private String areaName;
     private String visibility;
     private List<CbtExamItemResponse> examItems;
+    // 추가 메타: 생성 시 알림 및 라우팅에 활용
+    private Long classId;
+    private List<Long> studentIds;
 }

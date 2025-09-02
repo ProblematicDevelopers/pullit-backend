@@ -53,6 +53,7 @@ public class UserExamServiceImpl implements UserExamService {
                 .areaCode(request.getAreaCode())
                 .areaName(request.getAreaName())
                 .examType(request.getExamType())
+                .totalPoints(request.getTotalPoints() != null ? request.getTotalPoints() : 100)
                 .timeLimit(request.getTimeLimit())
                 .examDate(request.getExamDate())
                 .description(request.getDescription())
@@ -60,25 +61,30 @@ public class UserExamServiceImpl implements UserExamService {
                 .classId(request.getClassId())
                 .build();
 
-        // 문항 추가
+        // 문항 추가 (점수는 총점/문항수로 균등 분배)
         if (request.getItems() != null && !request.getItems().isEmpty()) {
             List<UserExamItem> examItems = new ArrayList<>();
+            int itemCount = request.getItems().size();
+            int totalPoints = userExam.getTotalPoints() != null ? userExam.getTotalPoints() : 100;
+            int base = itemCount > 0 ? totalPoints / itemCount : 0;
+            int remainder = itemCount > 0 ? totalPoints % itemCount : 0;
+            int idx = 0;
             for (UserExamCreateRequest.ExamItemRequest itemRequest : request.getItems()) {
                 // 실제 ItemMetadata 엔티티 확인 (존재 여부 체크)
                 if (itemRequest.getItemId() != null) {
                     itemMetadataRepository.findByItemId(itemRequest.getItemId())
                             .orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
                 }
-                
+                int points = base + (idx < remainder ? 1 : 0);
                 UserExamItem examItem = UserExamItem.builder()
                         .itemId(itemRequest.getItemId())
                         .subjectId(itemRequest.getSubjectId())
                         .itemOrder(itemRequest.getItemOrder())
-                        .points(itemRequest.getPoints() != null ? itemRequest.getPoints() : 5)
+                        .points(points)
                         .build();
-                
                 userExam.addExamItem(examItem);
                 examItems.add(examItem);
+                idx++;
             }
         }
 
@@ -156,6 +162,7 @@ public class UserExamServiceImpl implements UserExamService {
                 .areaCode(request.getAreaCode())
                 .areaName(request.getAreaName())
                 .examType(request.getExamType() != null ? request.getExamType() : "TESTWIZARD")
+                .totalPoints(request.getTotalPoints() != null ? request.getTotalPoints() : 100)
                 .timeLimit(request.getTimeLimit())
                 .examDate(request.getExamDate())
                 .description(request.getDescription())
@@ -169,8 +176,13 @@ public class UserExamServiceImpl implements UserExamService {
             userExam.updatePdfMetadata(s3Response);
         }
 
-        // 문항 추가
+        // 문항 추가 (점수는 총점/문항수로 균등 분배)
         if (request.getItems() != null && !request.getItems().isEmpty()) {
+            int itemCount = request.getItems().size();
+            int totalPoints = userExam.getTotalPoints() != null ? userExam.getTotalPoints() : 100;
+            int base = itemCount > 0 ? totalPoints / itemCount : 0;
+            int remainder = itemCount > 0 ? totalPoints % itemCount : 0;
+            int idx = 0;
             for (UserExamCreateRequest.ExamItemRequest itemRequest : request.getItems()) {
                 // ItemMetadata 존재 여부 체크 (선택적)
                 if (itemRequest.getItemId() != null) {
@@ -179,15 +191,15 @@ public class UserExamServiceImpl implements UserExamService {
                         log.warn("ItemMetadata not found but continuing: itemId={}", itemRequest.getItemId());
                     }
                 }
-                
+                int points = base + (idx < remainder ? 1 : 0);
                 UserExamItem examItem = UserExamItem.builder()
                         .itemId(itemRequest.getItemId())
                         .subjectId(itemRequest.getSubjectId())
                         .itemOrder(itemRequest.getItemOrder())
-                        .points(itemRequest.getPoints() != null ? itemRequest.getPoints() : 5)
+                        .points(points)
                         .build();
-                
                 userExam.addExamItem(examItem);
+                idx++;
             }
         }
 

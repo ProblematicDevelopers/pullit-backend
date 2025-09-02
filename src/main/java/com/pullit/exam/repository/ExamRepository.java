@@ -112,4 +112,31 @@ public interface ExamRepository extends JpaRepository<Exam, Long>, QuerydslPredi
             "WHERE e.createdBy = :userId " +
             "OR e.visibility = 'PUBLIC'")
     List<Exam> findMyAndPublicExams(@Param("userId") Long userId);
+    
+    // ===== 개수 조회 메서드 (캐싱용) =====
+    
+    /**
+     * 조건에 따른 전체 시험 개수 조회
+     * Exam 엔티티는 gradeCode, areaCode, termCode가 없으므로 subject 기준으로만 조회
+     */
+    @Query("SELECT COUNT(e) FROM Exam e " +
+           "WHERE (:subjectId IS NULL OR e.subject.subjectId = :subjectId)")
+    Long countByConditions(@Param("subjectId") Long subjectId);
+    
+    /**
+     * 공개범위별 시험 개수 조회
+     */
+    @Query("SELECT COUNT(e) FROM Exam e " +
+           "WHERE e.visibility = :visibility " +
+           "AND (:subjectId IS NULL OR e.subject.subjectId = :subjectId)")
+    Long countByVisibilityAndConditions(@Param("visibility") ExamVisibility visibility,
+                                        @Param("subjectId") Long subjectId);
+    
+    /**
+     * 전체 문항 수 조회
+     */
+    @Query("SELECT COUNT(ei) FROM ExamItem ei " +
+           "JOIN ei.exam e " +
+           "WHERE (:subjectId IS NULL OR e.subject.subjectId = :subjectId)")
+    Long countTotalQuestions(@Param("subjectId") Long subjectId);
 }

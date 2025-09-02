@@ -11,6 +11,7 @@ import com.pullit.exam.entity.Exam;
 import com.pullit.exam.entity.ExamItem;
 import com.pullit.exam.repository.ExamRepository;
 import com.pullit.exam.repository.ExamSearchRepository;
+import com.pullit.exam.repository.UserExamRepository;
 import com.pullit.item.entity.Subject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ import jakarta.persistence.Query;
 public class ExamSearchServiceImpl implements ExamSearchService {
     private final ExamSearchRepository examSearchRepository;
     private final ExamRepository examRepository;
+    private final UserExamRepository userExamRepository;
     private final EntityManager entityManager;
 
     /**
@@ -578,6 +580,147 @@ public class ExamSearchServiceImpl implements ExamSearchService {
         } catch (Exception e) {
             log.error("시험지 문항 정보 조회 중 오류 발생: examId={}", examId, e);
             throw new RuntimeException("시험지 문항 정보 조회 실패", e);
+        }
+    }
+    
+    /**
+     * 시험 개수 통계 조회 (Redis 캐싱 적용)
+     * - TestWizard, UserCreated, 공개범위별 개수 조회
+     */
+    @Override
+    @RedisCacheable(
+        key = "'exam:counts:' + " +
+              "(#request.gradeCode != null ? #request.gradeCode : 'all') + ':' + " +
+              "(#request.areaCode != null ? #request.areaCode : 'all') + ':' + " +
+              "(#request.termCode != null ? #request.termCode : 'all') + ':' + " +
+              "(#request.subjectId != null ? #request.subjectId : 'all')",
+        ttl = 60,  // 60분 캐싱 (카운트는 자주 변하지 않음)
+        condition = "#request != null"
+    )
+    public Map<String, Long> getExamCounts(ExamSearchRequest request) {
+        log.debug("시험 개수 통계 조회 시작: {}", request);
+        
+        Map<String, Long> countData = new HashMap<>();
+        
+        try {
+            // TestWizard 시험 개수 조회 (Exam은 subject 기준으로만 조회 가능)
+            Long testWizardCount = examRepository.countByConditions(
+                request.getSubjectId()
+            );
+            
+            // 사용자 생성 시험 개수 조회
+            Long userCreatedCount = userExamRepository.countUserExamsByConditions(
+                request.getGradeCode(),
+                request.getAreaCode(),
+                request.getTermCode()
+            );
+            
+            // 공개범위별 개수 조회 (TestWizard + UserExam)
+            Long publicTestWizard = examRepository.countByVisibilityAndConditions(
+                com.pullit.exam.enums.ExamVisibility.PUBLIC,
+                request.getSubjectId()
+            );
+            
+            Long publicUserCreated = userExamRepository.countUserExamsByVisibilityAndConditions(
+                com.pullit.exam.enums.ExamVisibility.PUBLIC,
+                request.getGradeCode(),
+                request.getAreaCode(),
+                request.getTermCode()
+            );
+            
+            Long schoolTestWizard = examRepository.countByVisibilityAndConditions(
+                com.pullit.exam.enums.ExamVisibility.SCHOOL,
+                request.getSubjectId()
+            );
+            
+            Long schoolUserCreated = userExamRepository.countUserExamsByVisibilityAndConditions(
+                com.pullit.exam.enums.ExamVisibility.SCHOOL,
+                request.getGradeCode(),
+                request.getAreaCode(),
+                request.getTermCode()
+            );
+            
+            Long privateTestWizard = examRepository.countByVisibilityAndConditions(
+                com.pullit.exam.enums.ExamVisibility.PRIVATE,
+                request.getSubjectId()
+            );
+            
+            Long privateUserCreated = userExamRepository.countUserExamsByVisibilityAndConditions(
+                com.pullit.exam.enums.ExamVisibility.PRIVATE,
+                request.getGradeCode(),
+                request.getAreaCode(),
+                request.getTermCode()
+            );
+            
+            // 데이터 구성
+            countData.put("testWizardCount", testWizardCount != null ? testWizardCount : 0L);
+            countData.put("userCreatedCount", userCreatedCount != null ? userCreatedCount : 0L);
+            countData.put("totalCount", (testWizardCount != null ? testWizardCount : 0L) + 
+                                        (userCreatedCount != null ? userCreatedCount : 0L));
+            countData.put("publicCount", (publicTestWizard != null ? publicTestWizard : 0L) + 
+                                         (publicUserCreated != null ? publicUserCreated : 0L));
+            countData.put("schoolCount", (schoolTestWizard != null ? schoolTestWizard : 0L) + 
+                                         (schoolUserCreated != null ? schoolUserCreated : 0L));
+            countData.put("privateCount", (privateTestWizard != null ? privateTestWizard : 0L) + 
+                                          (privateUserCreated != null ? privateUserCreated : 0L));
+            
+            log.info("시험 개수 통계 조회 완료: totalCount={}, testWizard={}, userCreated={}",
+                    countData.get("totalCount"), countData.get("testWizardCount"), countData.get("userCreatedCount"));
+            
+        } catch (Exception e) {
+            log.error("시험 개수 통계 조회 중 오류 발생", e);
+            // 오류 시 기본값 반환
+            countData.put("totalCount", 0L);
+            countData.put("testWizardCount", 0L);
+            countData.put("userCreatedCount", 0L);
+            countData.put("publicCount", 0L);
+            countData.put("schoolCount", 0L);
+            countData.put("privateCount", 0L);
+        }
+        
+        return countData;
+    }
+    
+    /**
+     * 전체 문항 개수 조회 (Redis 캐싱 적용)
+     */
+    @Override
+    @RedisCacheable(
+        key = "'exam:questionCount:' + " +
+              "(#request.gradeCode != null ? #request.gradeCode : 'all') + ':' + " +
+              "(#request.areaCode != null ? #request.areaCode : 'all') + ':' + " +
+              "(#request.termCode != null ? #request.termCode : 'all') + ':' + " +
+              "(#request.subjectId != null ? #request.subjectId : 'all')",
+        ttl = 60,  // 60분 캐싱
+        condition = "#request != null"
+    )
+    public Long getTotalQuestionCount(ExamSearchRequest request) {
+        log.debug("전체 문항 개수 조회 시작: {}", request);
+        
+        try {
+            // TestWizard 시험의 문항 수 (Exam은 subject 기준으로만 조회 가능)
+            Long testWizardQuestions = examRepository.countTotalQuestions(
+                request.getSubjectId()
+            );
+            
+            // 사용자 생성 시험의 문항 수
+            Long userCreatedQuestions = userExamRepository.countUserExamQuestions(
+                request.getGradeCode(),
+                request.getAreaCode(),
+                request.getTermCode()
+            );
+            
+            Long totalQuestions = (testWizardQuestions != null ? testWizardQuestions : 0L) + 
+                                 (userCreatedQuestions != null ? userCreatedQuestions : 0L);
+            
+            log.info("전체 문항 개수 조회 완료: total={}, testWizard={}, userCreated={}",
+                    totalQuestions, testWizardQuestions, userCreatedQuestions);
+            
+            return totalQuestions;
+            
+        } catch (Exception e) {
+            log.error("전체 문항 개수 조회 중 오류 발생", e);
+            return 0L;
         }
     }
 }

@@ -4,6 +4,7 @@ import com.pullit.cbt.dto.request.CbtExamCreateRequest;
 import com.pullit.cbt.dto.request.CbtAttemptRequest;
 import com.pullit.cbt.dto.request.RedisUpdateRequest;
 import com.pullit.cbt.dto.request.RedisMigrationRequest;
+import com.pullit.cbt.dto.request.UserExamToCbtRequest;
 import com.pullit.cbt.dto.response.CbtExamResponse;
 import com.pullit.cbt.dto.response.CbtAttemptResponse;
 import com.pullit.cbt.dto.response.CbtExamItemResponse;
@@ -29,10 +30,17 @@ import com.pullit.cbt.repository.AttemptExamRepository;
 import com.pullit.cbt.repository.AttemptExamQuestionRepository;
 import com.pullit.user.entity.User;
 import com.pullit.user.repository.UserRepository;
+import com.pullit.student.repository.StudentRepository;
+import com.pullit.student.entity.Student;
 import com.pullit.common.cache.service.RedisCacheService;
 import com.pullit.common.constants.CacheConstants;
+import com.pullit.exam.repository.TeacherLiveExamRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import com.pullit.notification.annotation.NotificationTrigger;
+import com.pullit.notification.enums.NotificationType;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -42,6 +50,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CbtServiceImpl implements CbtService {
     private final SubjectRepository subjectRepository;
     private final UserExamRepository userExamRepository;
@@ -51,6 +60,9 @@ public class CbtServiceImpl implements CbtService {
     private final AttemptExamQuestionRepository attemptExamQuestionRepository;
     private final UserRepository userRepository;
     private final RedisCacheService redisCacheService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final StudentRepository studentRepository;
+    private final TeacherLiveExamRepository teacherLiveExamRepository;
 
     @Override
     public Long createExam(Long userId, CbtExamCreateRequest request) {
@@ -90,6 +102,142 @@ public class CbtServiceImpl implements CbtService {
         }
     }
 
+    @Override
+    @NotificationTrigger(
+        type = NotificationType.EXAM_ASSIGNED,
+        multipleUsers = true,
+        userIdsExpression = "#result.studentIds",
+        title = "'실시간 시험 생성'",
+        message = "'실시간 시험 [' + #result.examName + ']이(가) 생성되었습니다.'",
+        // 알림 클릭 시 실제 응시 페이지로 바로 이동
+        targetUrl = "'/student/cbt/exam/' + #result.examId"
+    )
+    public CbtExamResponse createCbtFromUserExam(Long userId, UserExamToCbtRequest request) {
+        // 1. 원본 시험 조회 및 권한 확인
+        UserExam sourceExam = userExamRepository.findById(request.getSourceExamId())
+                .orElseThrow(() -> new IllegalArgumentException("원본 시험을 찾을 수 없습니다."));
+        
+        // 1-1. 이미 해당 시험으로 생성된 CBT가 있는지 확인
+        // 같은 원본 시험 + 같은 학급 + 같은 타입(CBT/ASSIGNMENT)의 조합으로 체크
+        String existingExamNamePattern = sourceExam.getExamName() + " (" + request.getDeliveryType() + ")";
+        List<UserExam> existingCbtExams = userExamRepository.findByExamNameAndClassIdAndDeletedDateIsNull(
+                existingExamNamePattern, request.getTargetClassId());
+        
+        if (!existingCbtExams.isEmpty()) {
+            // 이미 생성된 CBT가 있으면 그것을 반환
+            UserExam existingExam = existingCbtExams.get(0);
+            log.info("기존 CBT 시험 반환: examId={}, examName={}", existingExam.getId(), existingExam.getExamName());
+            
+            // 생성(재사용) 시점에도 학생 대시보드에 노출되도록 이벤트 브로드캐스트
+            broadcastExamCreatedEvent(request.getTargetClassId(), existingExam);
+
+            // 학생 목록 조회 (알림 대상)
+            java.util.List<Long> studentIds = getStudentIds(request.getTargetClassId());
+
+            return CbtExamResponse.builder()
+                    .examId(existingExam.getId())
+                    .examName(existingExam.getExamName())
+                    .examType(existingExam.getExamType())
+                    .totalItems(existingExam.getTotalItems())
+                    .timeLimit(existingExam.getTimeLimit())
+                    .classId(request.getTargetClassId())
+                    .studentIds(studentIds)
+                    .build();
+        }
+        
+        // 2. 새로운 시험 생성
+        String examName = request.getExamName() != null ? 
+            request.getExamName() : 
+            sourceExam.getExamName() + " (" + request.getDeliveryType() + ")";
+            
+        UserExam newExam = UserExam.builder()
+                .examName(examName)
+                .examType(request.getDeliveryType().toString())
+                .totalItems(sourceExam.getTotalItems())
+                .timeLimit(request.getTimeLimit() != null ? request.getTimeLimit() : sourceExam.getTimeLimit())
+                .gradeCode(sourceExam.getGradeCode())
+                .gradeName(sourceExam.getGradeName())
+                .termCode(sourceExam.getTermCode())
+                .termName(sourceExam.getTermName())
+                .areaName(sourceExam.getAreaName())
+                .areaCode(sourceExam.getAreaCode())
+                .visibility(ExamVisibility.PRIVATE)
+                .classId(request.getTargetClassId())  // 학급에 할당
+                .build();
+        
+        UserExam savedExam = userExamRepository.save(newExam);
+        
+        // 3. 원본 시험의 문제들을 복사
+        List<UserExamItem> sourceItems = sourceExam.getExamItems();
+        List<UserExamItem> newItems = new java.util.ArrayList<>();
+        
+        int order = 1;
+        for (UserExamItem sourceItem : sourceItems) {
+            UserExamItem newItem = UserExamItem.builder()
+                    .userExam(savedExam)
+                    .itemId(sourceItem.getItemId())
+                    .subjectId(sourceItem.getSubjectId())
+                    .points(sourceItem.getPoints())
+                    .itemOrder(request.getShuffleQuestions() != null && request.getShuffleQuestions() ? 
+                        (int)(Math.random() * sourceItems.size()) + 1 : order++)
+                    .build();
+            newItems.add(newItem);
+        }
+        
+        // UserExam의 addExamItem 메서드를 사용하여 추가
+        for (UserExamItem item : newItems) {
+            savedExam.addExamItem(item);
+        }
+        
+        savedExam = userExamRepository.save(savedExam);
+
+        // 생성 시점에 클래스 채널로 EXAM_CREATED 이벤트 브로드캐스트
+        broadcastExamCreatedEvent(request.getTargetClassId(), savedExam);
+        
+        // 4. 응답 생성 (학생 목록 포함)
+        java.util.List<Long> studentIds = getStudentIds(request.getTargetClassId());
+        return CbtExamResponse.builder()
+                .examId(savedExam.getId())
+                .examName(savedExam.getExamName())
+                .examType(savedExam.getExamType())
+                .totalItems(savedExam.getTotalItems())
+                .timeLimit(savedExam.getTimeLimit())
+                .classId(request.getTargetClassId())
+                .studentIds(studentIds)
+                .build();
+    }
+
+    /**
+     * 학급 채널로 EXAM_CREATED 이벤트 전송
+     */
+    private void broadcastExamCreatedEvent(Long classId, UserExam exam) {
+        try {
+            String destination = "/topic/class-" + classId + "/exam-status";
+            Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("id", exam.getId());
+            payload.put("examId", exam.getId());
+            payload.put("examName", exam.getExamName());
+            payload.put("classId", classId);
+            payload.put("examType", exam.getExamType() != null ? exam.getExamType() : "CBT");
+            payload.put("examStatus", "CREATED");
+            payload.put("totalItems", exam.getTotalItems());
+            payload.put("totalPoints", exam.getTotalPoints());
+            payload.put("timeLimit", exam.getTimeLimit());
+            payload.put("areaName", exam.getAreaName());
+            payload.put("eventType", "EXAM_CREATED");
+
+            messagingTemplate.convertAndSend(destination, payload);
+            log.info("Broadcasted EXAM_CREATED to {} (examId={})", destination, exam.getId());
+        } catch (Exception e) {
+            log.error("Failed to broadcast EXAM_CREATED for class {} exam {}", classId, exam.getId(), e);
+        }
+    }
+
+    private java.util.List<Long> getStudentIds(Long classId) {
+        java.util.List<Student> students = studentRepository.findByClassGroupID(classId);
+        return students.stream().map(Student::getUserId).collect(java.util.stream.Collectors.toList());
+    }
+    
     @Override
     public UserExam addExamItem(Long examId, CbtExamCreateRequest request) {
         // 문제를 난이도별로 고루 분포하게 뽑아서 UserExamItem으로 추가하는 로직
@@ -201,8 +349,27 @@ public class CbtServiceImpl implements CbtService {
         UserExam userExam = userExamRepository.findById(examId)
                 .orElseThrow(() -> new IllegalArgumentException("시험을 찾을 수 없습니다. id=" + examId));
 
-        // 사용자 권한 확인 (자신의 시험이거나 공개된 시험만 조회 가능)
-        if (!userExam.getCreatedBy().equals(userId) && userExam.getVisibility() != ExamVisibility.PUBLIC) {
+        // 사용자 권한 확인
+        boolean isCreator = userExam.getCreatedBy() != null && userExam.getCreatedBy().equals(userId);
+        boolean isPublic = userExam.getVisibility() == ExamVisibility.PUBLIC;
+        boolean isClassMember = false;
+        if (userExam.getClassId() != null) {
+            try {
+                isClassMember = studentRepository.existsByUserIdAndClassGroupID(userId, userExam.getClassId());
+            } catch (Exception ignored) {}
+        }
+        // 실시간 시험(TeacherLiveExam)으로 예정/진행 중인 경우 접근 허용
+        boolean viaLiveExam = false;
+        if (!isCreator && !isPublic && !isClassMember) {
+            try {
+                Student student = studentRepository.findByUserId(userId);
+                if (student != null && student.getClassGroupID() != null) {
+                    long cnt = teacherLiveExamRepository.countActiveBySourceExamAndClass(userExam.getId(), student.getClassGroupID());
+                    viaLiveExam = cnt > 0;
+                }
+            } catch (Exception ignored) {}
+        }
+        if (!(isCreator || isPublic || isClassMember || viaLiveExam)) {
             throw new IllegalArgumentException("해당 시험에 대한 접근 권한이 없습니다.");
         }
 

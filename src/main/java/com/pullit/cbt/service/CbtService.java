@@ -4,6 +4,7 @@ import com.pullit.cbt.dto.request.CbtExamCreateRequest;
 import com.pullit.cbt.dto.request.CbtAttemptRequest;
 import com.pullit.cbt.dto.request.RedisUpdateRequest;
 import com.pullit.cbt.dto.request.RedisMigrationRequest;
+import com.pullit.cbt.dto.request.UserExamToCbtRequest;
 import com.pullit.cbt.dto.response.CbtExamResponse;
 import com.pullit.cbt.dto.response.CbtAttemptResponse;
 import com.pullit.cbt.dto.response.AttemptAnswerResponse;
@@ -16,6 +17,8 @@ public interface CbtService {
     Long createExam(Long userId, CbtExamCreateRequest request);
 
     UserExam addExamItem(Long examId, CbtExamCreateRequest request);
+    
+    CbtExamResponse createCbtFromUserExam(Long userId, UserExamToCbtRequest request);
     
     CbtExamResponse getCbtExam(Long examId, Long userId);
     

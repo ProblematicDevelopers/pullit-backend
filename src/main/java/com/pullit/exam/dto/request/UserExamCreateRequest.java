@@ -27,6 +27,7 @@ public class UserExamCreateRequest {
     private String description;
     private String visibility;  // PRIVATE, PUBLIC, CLASS_ONLY
     private Long classId;
+    private Integer totalPoints; // 총점(선택, 기본 100)
     private Boolean shuffleQuestions;
     private Boolean showAnswerAfterSubmit;
     private List<ExamItemRequest> items;

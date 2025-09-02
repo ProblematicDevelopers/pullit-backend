@@ -220,53 +220,78 @@ public class ExamSearchController {
     }
 
     /**
-     * 시험지 개수 조회
+     * 시험지 개수 조회 (Redis 캐싱 적용)
      * - 조건에 맞는 시험지 개수를 조회합니다
+     * - TestWizard와 UserCreated 시험을 구분하여 실제 개수 반환
      */
     @GetMapping("/count")
-    @Operation(summary = "시험지 개수 조회", description = "조건에 맞는 시험지 개수를 조회합니다")
+    @Operation(summary = "시험지 개수 조회", description = "조건에 맞는 시험지 개수를 조회합니다 (캐싱 적용)")
     public ResponseEntity<Map<String, Object>> getExamCount(
             @ModelAttribute ExamSearchRequest request
     ) {
-        log.info("시험지 개수 조회 요청: areaCode={}, gradeCode={}",
-                request.getAreaCode(), request.getGradeCode());
-
-        Map<String, Object> countData = new HashMap<>();
+        log.info("시험지 개수 조회 요청: areaCode={}, gradeCode={}, termCode={}, subjectId={}",
+                request.getAreaCode(), request.getGradeCode(), request.getTermCode(), request.getSubjectId());
 
         try {
-            // 전체 검색을 수행하여 실제 개수 가져오기
-            Page<UnifiedExamResponse> result = examSearchService.searchExams(
-                    request,
-                    Pageable.ofSize(1) // 개수만 필요하므로 1개만 조회
-            );
-
-            long totalCount = result.getTotalElements();
-
-            // 응답 데이터 구성
-            countData.put("totalCount", totalCount);
-
-            // TestWizard와 UserCreated 개수 (향후 구분 가능하면 추가)
-            countData.put("testWizardCount", totalCount); // 현재는 전체 개수로 설정
-            countData.put("userCreatedCount", 0);
-
-            // 공개 범위별 개수 (추가 쿼리 필요시 구현)
-            countData.put("publicCount", totalCount);
-            countData.put("schoolCount", 0);
-            countData.put("privateCount", 0);
-
-            log.info("시험지 개수 조회 성공: totalCount={}", totalCount);
+            // Redis 캐싱이 적용된 서비스 메서드 호출
+            Map<String, Long> counts = examSearchService.getExamCounts(request);
+            
+            // Long을 Object로 변환 (ResponseEntity 타입 맞추기)
+            Map<String, Object> countData = new HashMap<>();
+            counts.forEach((key, value) -> countData.put(key, value));
+            
+            log.info("시험지 개수 조회 성공 - Total: {}, TestWizard: {}, UserCreated: {}, Public: {}, School: {}, Private: {}",
+                    countData.get("totalCount"), countData.get("testWizardCount"), 
+                    countData.get("userCreatedCount"), countData.get("publicCount"),
+                    countData.get("schoolCount"), countData.get("privateCount"));
+            
+            return ResponseEntity.ok(countData);
+            
         } catch (Exception e) {
             log.error("시험지 개수 조회 중 오류 발생", e);
             // 오류 시 기본값 반환
-            countData.put("totalCount", 0);
-            countData.put("testWizardCount", 0);
-            countData.put("userCreatedCount", 0);
-            countData.put("publicCount", 0);
-            countData.put("schoolCount", 0);
-            countData.put("privateCount", 0);
+            Map<String, Object> errorData = new HashMap<>();
+            errorData.put("totalCount", 0L);
+            errorData.put("testWizardCount", 0L);
+            errorData.put("userCreatedCount", 0L);
+            errorData.put("publicCount", 0L);
+            errorData.put("schoolCount", 0L);
+            errorData.put("privateCount", 0L);
+            
+            return ResponseEntity.ok(errorData);
         }
-
-        return ResponseEntity.ok(countData);
+    }
+    
+    /**
+     * 전체 문항 개수 조회 (Redis 캐싱 적용)
+     * - 조건에 맞는 전체 문항 개수를 조회합니다
+     */
+    @GetMapping("/question-count")
+    @Operation(summary = "전체 문항 개수 조회", description = "조건에 맞는 전체 문항 개수를 조회합니다 (캐싱 적용)")
+    public ResponseEntity<Map<String, Object>> getQuestionCount(
+            @ModelAttribute ExamSearchRequest request
+    ) {
+        log.info("문항 개수 조회 요청: areaCode={}, gradeCode={}, termCode={}, subjectId={}",
+                request.getAreaCode(), request.getGradeCode(), request.getTermCode(), request.getSubjectId());
+        
+        try {
+            // Redis 캐싱이 적용된 서비스 메서드 호출
+            Long totalQuestions = examSearchService.getTotalQuestionCount(request);
+            
+            Map<String, Object> countData = new HashMap<>();
+            countData.put("totalQuestions", totalQuestions);
+            
+            log.info("문항 개수 조회 성공: totalQuestions={}", totalQuestions);
+            
+            return ResponseEntity.ok(countData);
+            
+        } catch (Exception e) {
+            log.error("문항 개수 조회 중 오류 발생", e);
+            Map<String, Object> errorData = new HashMap<>();
+            errorData.put("totalQuestions", 0L);
+            
+            return ResponseEntity.ok(errorData);
+        }
     }
 
     /**
