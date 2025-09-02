@@ -1,9 +1,9 @@
 package com.pullit.common.s3.enums;
 
+import java.time.LocalDate;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-
-import java.time.LocalDate;
 
 @Getter
 @RequiredArgsConstructor
@@ -18,6 +18,12 @@ public enum S3Directory {
     IMAGE_QUESTION("images/questions/", "문제 이미지"),
     IMAGE_LOGO("images/logos/", "로고 이미지"),
     OCR_IMAGES("images/ocr/", "OCR 처리 이미지"),
+    
+    // SVG 관련
+    SVG_PASSAGE("images/svg/passage/", "지문 SVG"),
+    SVG_QUESTION("images/svg/question/", "문제 SVG"),
+    SVG_ANSWER("images/svg/answer/", "답안 SVG"),
+    SVG_EXPLAIN("images/svg/explain/", "해설 SVG"),
 
     // 엑셀 관련
     EXCEL_EXPORT("excels/exports/", "엑셀 내보내기"),
