@@ -328,7 +328,8 @@ public class AuthController {
         );
     }
     
-    @GetMapping("/oauth2/callback/{provider}")
+    // Legacy direct-callback endpoint retained for debugging; path changed to avoid conflict
+    @GetMapping("/oauth2/callback-direct/{provider}")
     @Operation(
             summary = "OAuth2 콜백 처리",
             description = "OAuth2 제공자로부터 콜백을 받아 처리합니다."
