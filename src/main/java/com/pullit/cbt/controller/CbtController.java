@@ -5,6 +5,7 @@ import com.pullit.cbt.dto.request.CbtExamCreateRequest;
 import com.pullit.cbt.dto.request.CbtAttemptRequest;
 import com.pullit.cbt.dto.request.RedisUpdateRequest;
 import com.pullit.cbt.dto.request.RedisMigrationRequest;
+import com.pullit.cbt.dto.request.UserExamToCbtRequest;
 import com.pullit.cbt.dto.response.CbtExamResponse;
 import com.pullit.cbt.dto.response.CbtAttemptResponse;
 import com.pullit.cbt.dto.response.AttemptAnswerResponse;
@@ -28,6 +29,24 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Cbt", description = "CBT API")
 public class CbtController {
     private final CbtService cbtService;
+
+    @PostMapping("/create-from-exam")
+    @Operation(summary = "기존 시험지에서 CBT/과제 생성", description = "UserExam에서 새로운 CBT 또는 과제를 생성합니다")
+    public ResponseEntity<ApiResponse<CbtExamResponse>> createCbtFromUserExam(
+            @AuthUser CustomUserDetails currentUser,
+            @RequestBody UserExamToCbtRequest request) {
+        try {
+            Long userId = currentUser.getUserId();
+            CbtExamResponse response = cbtService.createCbtFromUserExam(userId, request);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("400", "잘못된 요청입니다: " + e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.error("500", "CBT 생성 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
 
     @PostMapping("/create")
     @Operation(summary = "cbt 시험지 생성 및 메타 데이터 연결", description = "cbt 시험지 생성 및 메타 데이터 연결")

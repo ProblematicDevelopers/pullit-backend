@@ -207,6 +207,12 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long>, Query
             "AND ue.deletedDate IS NULL " +
             "ORDER BY ue.createdDate DESC")
     List<UserExam> findMyAndPublicExams(@Param("userId") Long userId);
+    
+    /**
+     * 시험 이름과 학급 ID로 중복 확인 (CBT 중복 생성 방지용)
+     * - 같은 이름의 시험이 같은 학급에 이미 있는지 확인
+     */
+    List<UserExam> findByExamNameAndClassIdAndDeletedDateIsNull(String examName, Long classId);
 
 
 
@@ -219,4 +225,45 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long>, Query
     //        "AND ue.createdBy IN (SELECT t.userId FROM Teacher t WHERE t.school = :school) " +
     //        "AND ue.deletedDate IS NULL")
     // List<UserExam> findSchoolExams(@Param("school") String school);
+    
+    // ===== 개수 조회 메서드 (캐싱용) =====
+    
+    /**
+     * 조건에 따른 사용자 생성 시험 개수 조회
+     */
+    @Query("SELECT COUNT(ue) FROM UserExam ue " +
+           "WHERE ue.deletedDate IS NULL " +
+           "AND (:gradeCode IS NULL OR ue.gradeCode = :gradeCode) " +
+           "AND (:areaCode IS NULL OR ue.areaCode = :areaCode) " +
+           "AND (:termCode IS NULL OR ue.termCode = :termCode)")
+    Long countUserExamsByConditions(@Param("gradeCode") String gradeCode,
+                                    @Param("areaCode") String areaCode,
+                                    @Param("termCode") String termCode);
+    
+    /**
+     * 공개범위별 사용자 생성 시험 개수 조회
+     */
+    @Query("SELECT COUNT(ue) FROM UserExam ue " +
+           "WHERE ue.deletedDate IS NULL " +
+           "AND ue.visibility = :visibility " +
+           "AND (:gradeCode IS NULL OR ue.gradeCode = :gradeCode) " +
+           "AND (:areaCode IS NULL OR ue.areaCode = :areaCode) " +
+           "AND (:termCode IS NULL OR ue.termCode = :termCode)")
+    Long countUserExamsByVisibilityAndConditions(@Param("visibility") ExamVisibility visibility,
+                                                 @Param("gradeCode") String gradeCode,
+                                                 @Param("areaCode") String areaCode,
+                                                 @Param("termCode") String termCode);
+    
+    /**
+     * 사용자 생성 시험의 전체 문항 수 조회
+     */
+    @Query("SELECT COUNT(uei) FROM UserExamItem uei " +
+           "JOIN uei.userExam ue " +
+           "WHERE ue.deletedDate IS NULL " +
+           "AND (:gradeCode IS NULL OR ue.gradeCode = :gradeCode) " +
+           "AND (:areaCode IS NULL OR ue.areaCode = :areaCode) " +
+           "AND (:termCode IS NULL OR ue.termCode = :termCode)")
+    Long countUserExamQuestions(@Param("gradeCode") String gradeCode,
+                                @Param("areaCode") String areaCode,
+                                @Param("termCode") String termCode);
 }

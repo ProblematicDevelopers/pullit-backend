@@ -34,6 +34,11 @@ public interface NotificationRepository {
     List<Notification> findUnreadByUserId(Long userId);
     
     /**
+     * 사용자의 알림 목록 조회 (페이징, 최신순 정렬)
+     */
+    List<Notification> findByUserIdOrderByCreatedAtDesc(Long userId, int page, int size);
+    
+    /**
      * 알림 삭제
      */
     void deleteById(String id);

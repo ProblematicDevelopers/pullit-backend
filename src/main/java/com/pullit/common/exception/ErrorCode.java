@@ -47,6 +47,11 @@ public enum ErrorCode {
     FILE_DOWNLOAD_FAILED("FILE_006", "파일 다운로드에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     FILE_PROCESSING_ERROR("FILE_007", "파일 변환에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
 
+    // ========== 과제 관련 에러 (ASSIGNMENT) ==========
+    INVALID_REQUEST("ASSIGNMENT_001", "잘못된 요청입니다.", HttpStatus.BAD_REQUEST),
+    SUBMISSION_DEADLINE_PASSED("ASSIGNMENT_002", "제출 기한이 지났습니다.", HttpStatus.BAD_REQUEST),
+    INVALID_SCORE("ASSIGNMENT_003", "유효하지 않은 점수입니다.", HttpStatus.BAD_REQUEST),
+    
     // ========== S3 관련 에러 (S3) ==========
     S3_OPERATION_FAILED("S3_001", "S3 작업 중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     S3_BUCKET_NOT_FOUND("S3_002", "S3 버킷을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
@@ -66,7 +71,7 @@ public enum ErrorCode {
     DUPLICATE_ASSIGNMENT("EXAM_004", "이미 출제된 시험입니다.", HttpStatus.CONFLICT),
     INVALID_STATUS("EXAM_005", "유효하지 않은 시험 상태입니다.", HttpStatus.BAD_REQUEST),
     CLASS_NOT_FOUND("EXAM_006", "학급을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-    INVALID_REQUEST("EXAM_007", "유효하지 않은 요청입니다.", HttpStatus.BAD_REQUEST),
+
 
 
     // ========== 외부 API 관련 에러 (EXTERNAL) ==========

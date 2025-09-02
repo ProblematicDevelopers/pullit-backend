@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -12,6 +13,21 @@ import java.util.stream.Collectors;
 @Repository
 @RequiredArgsConstructor
 public class NotificationRepositoryImpl implements NotificationRepository {
+    
+    @Override
+    public List<Notification> findByUserIdOrderByCreatedAtDesc(Long userId, int page, int size) {
+        // Redis에서는 이미 findByUserId로 구현되어 있으므로 그것을 사용
+        // 페이징은 간단하게 skip과 limit로 처리
+        List<Notification> allNotifications = findByUserId(userId);
+        int start = page * size;
+        int end = Math.min(start + size, allNotifications.size());
+        
+        if (start >= allNotifications.size()) {
+            return new ArrayList<>();
+        }
+        
+        return allNotifications.subList(start, end);
+    }
     
     private final RedisTemplate<String, Object> redisTemplate;
     private static final String KEY_PREFIX = "notification:";

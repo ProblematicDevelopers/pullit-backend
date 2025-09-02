@@ -26,6 +26,10 @@ public enum S3Directory {
     // 문서 파일
     DOCUMENT("documents/", "문서 파일"),
     
+    // 과제 관련
+    ASSIGNMENT("assignments/", "과제 파일"),
+    SUBMISSION("submissions/", "제출 파일"),
+    
     // 임시 파일
     TEMP("temp/", "임시 파일"),
     EXAM_PDF("exam-pdf/", "시험지 PDF");

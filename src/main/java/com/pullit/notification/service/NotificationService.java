@@ -5,10 +5,12 @@ import com.pullit.notification.dto.response.NotificationResponse;
 import com.pullit.notification.entity.Notification;
 import com.pullit.notification.enums.NotificationType;
 import com.pullit.notification.repository.NotificationRepository;
+import com.pullit.notification.repository.NotificationJpaRepository;
 import com.pullit.notification.websocket.NotificationWebSocketHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,8 @@ import java.util.stream.Collectors;
 public class NotificationService {
     
     private final RedisTemplate<String, Object> redisTemplate;
-    private final NotificationRepository notificationRepository;
+    private final NotificationRepository notificationRepository;  // Redis repository
+    private final NotificationJpaRepository notificationJpaRepository;  // JPA repository for DB
     private final NotificationWebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper;
     
@@ -43,22 +46,25 @@ public class NotificationService {
             // 알림 엔티티 생성
             Notification notification = buildNotification(request);
             
-            // Redis에 저장
-            saveToRedis(notification);
+            // 데이터베이스에 저장 (영구 보관)
+            Notification savedNotification = notificationJpaRepository.save(notification);
+            
+            // Redis에도 저장 (빠른 조회용)
+            saveToRedis(savedNotification);
             
             // 읽지 않은 알림 카운트 증가
-            incrementUnreadCount(notification.getUserId());
+            incrementUnreadCount(savedNotification.getUserId());
             
             // Redis Pub/Sub으로 실시간 전송
-            publishNotification(notification);
+            publishNotification(savedNotification);
             
             // WebSocket으로 즉시 전송
-            sendViaWebSocket(notification);
+            sendViaWebSocket(savedNotification);
             
-            log.info("Notification created for user {}: {}", 
-                    notification.getUserId(), notification.getTitle());
+            log.info("Notification created and persisted for user {}: {}", 
+                    savedNotification.getUserId(), savedNotification.getTitle());
             
-            return NotificationResponse.from(notification);
+            return NotificationResponse.from(savedNotification);
             
         } catch (Exception e) {
             log.error("Failed to create notification: ", e);
@@ -79,8 +85,22 @@ public class NotificationService {
         List<Object> notifications = redisTemplate.opsForList()
                 .range(key, start, end);
         
+        // Redis에 데이터가 없으면 DB에서 조회
         if (notifications == null || notifications.isEmpty()) {
-            return Collections.emptyList();
+            PageRequest pageRequest = PageRequest.of(page, size);
+            List<Notification> dbNotifications = notificationJpaRepository
+                    .findByUserIdOrderByCreatedAtDesc(userId, pageRequest).getContent();
+            
+            // DB 데이터를 Redis에 캐시
+            if (!dbNotifications.isEmpty()) {
+                for (Notification notification : dbNotifications) {
+                    saveToRedis(notification);
+                }
+            }
+            
+            return dbNotifications.stream()
+                    .map(NotificationResponse::from)
+                    .collect(Collectors.toList());
         }
         
         return notifications.stream()
@@ -106,6 +126,16 @@ public class NotificationService {
     public void markAsRead(Long userId, String notificationId) {
         String listKey = NOTIFICATION_KEY_PREFIX + userId;
         
+        // DB에서도 읽음 처리
+        Notification dbNotification = notificationJpaRepository.findById(notificationId)
+                .orElse(null);
+        
+        if (dbNotification != null && !dbNotification.isRead()) {
+            dbNotification.setRead(true);
+            dbNotification.setReadAt(LocalDateTime.now());
+            notificationJpaRepository.save(dbNotification);
+        }
+        
         // Redis List에서 모든 알림 조회
         List<Object> notifications = redisTemplate.opsForList()
                 .range(listKey, 0, -1);
@@ -127,7 +157,7 @@ public class NotificationService {
                 // 읽지 않은 알림 카운트 감소
                 decrementUnreadCount(userId);
                 
-                log.info("Notification {} marked as read for user {}", 
+                log.info("Notification {} marked as read for user {} in both DB and Redis", 
                         notificationId, userId);
                 break;
             }
@@ -175,6 +205,10 @@ public class NotificationService {
      */
     @Transactional
     public void deleteNotification(Long userId, String notificationId) {
+        // DB에서 삭제
+        notificationJpaRepository.deleteById(notificationId);
+        
+        // Redis에서도 삭제
         String key = NOTIFICATION_KEY_PREFIX + userId;
         List<Object> notifications = redisTemplate.opsForList()
                 .range(key, 0, -1);
@@ -192,10 +226,59 @@ public class NotificationService {
                     decrementUnreadCount(userId);
                 }
                 
-                log.info("Notification {} deleted for user {}", 
+                log.info("Notification {} deleted for user {} from both DB and Redis", 
                         notificationId, userId);
                 break;
             }
+        }
+    }
+    
+    /**
+     * 시험 관련 알림 생성
+     */
+    @Transactional
+    public void createExamNotification(Long classId, Long examId, String examType, 
+                                      String eventType, String message) {
+        try {
+            // 클래스의 모든 학생들에게 알림 생성
+            // TODO: classId로 학생 목록을 조회하여 각 학생에게 알림 생성
+            // 여기서는 예시로 단순화
+            
+            // eventType에 따라 적절한 NotificationType 선택
+            NotificationType notificationType;
+            switch (eventType) {
+                case "EXAM_CREATED":
+                    notificationType = NotificationType.EXAM_ASSIGNED;
+                    break;
+                case "EXAM_STARTED":
+                    notificationType = NotificationType.EXAM_STARTED;
+                    break;
+                case "EXAM_ENDED":
+                    notificationType = NotificationType.EXAM_ENDED;
+                    break;
+                default:
+                    notificationType = NotificationType.EXAM_ASSIGNED;
+            }
+            
+            NotificationCreateRequest request = NotificationCreateRequest.builder()
+                    .userId(classId) // 실제로는 각 학생 ID로 변경 필요
+                    .type(notificationType)
+                    .customTitle("실시간 시험 알림")
+                    .customMessage(message)
+                    .data(Map.of(
+                            "examId", examId,
+                            "examType", examType,
+                            "eventType", eventType,
+                            "classId", classId
+                    ))
+                    .targetUrl("/student/exam/" + examId)
+                    .build();
+            
+            createNotification(request);
+            
+            log.info("Exam notification created for class {} exam {}", classId, examId);
+        } catch (Exception e) {
+            log.error("Failed to create exam notification: ", e);
         }
     }
     
@@ -243,10 +326,7 @@ public class NotificationService {
     // Private helper methods
     
     private Notification buildNotification(NotificationCreateRequest request) {
-        String id = UUID.randomUUID().toString();
-        
         return Notification.builder()
-                .id(id)
                 .userId(request.getUserId())
                 .type(request.getType().name())
                 .title(request.getCustomTitle() != null ? 

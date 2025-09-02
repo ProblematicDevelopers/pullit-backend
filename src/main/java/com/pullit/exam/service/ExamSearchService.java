@@ -131,4 +131,22 @@ public interface ExamSearchService {
     List<Long> getExamItemIds(Long examId);
 
     ExamWithItemsResponse getExamWithItems(Long examId);
+    
+    /**
+     * 시험 개수 통계 조회 (캐싱 적용)
+     * - 조건에 따른 시험 개수를 조회
+     * - TestWizard, UserCreated, 공개범위별 개수 포함
+     * 
+     * @param request 검색 조건
+     * @return 시험 개수 통계
+     */
+    Map<String, Long> getExamCounts(ExamSearchRequest request);
+    
+    /**
+     * 전체 문항 개수 조회 (캐싱 적용)
+     * 
+     * @param request 검색 조건
+     * @return 총 문항 개수
+     */
+    Long getTotalQuestionCount(ExamSearchRequest request);
 }

@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum NotificationType {
     EXAM_ASSIGNED("시험 배정", "새로운 시험이 배정되었습니다", "HIGH"),
+    EXAM_STARTED("시험 시작", "실시간 시험이 시작되었습니다", "HIGH"),
+    EXAM_ENDED("시험 종료", "실시간 시험이 종료되었습니다", "HIGH"),
     EXAM_COMPLETED("시험 완료", "시험이 완료되었습니다", "MEDIUM"),
     EXAM_RESULT("시험 결과", "시험 결과가 발표되었습니다", "HIGH"),
     CLASS_INVITATION("반 초대", "새로운 반 초대가 있습니다", "HIGH"),

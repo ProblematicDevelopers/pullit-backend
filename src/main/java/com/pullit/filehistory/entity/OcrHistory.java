@@ -1,5 +1,6 @@
 package com.pullit.filehistory.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pullit.item.entity.ItemMetadata;
 import com.pullit.itemprocess.entity.ProcessedItem;
 import com.pullit.itemprocess.enums.AreaType;
@@ -22,14 +23,17 @@ public class OcrHistory {
     private long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
     @JoinColumn(name = "pdf_image_id")
     private PdfImage pdfImage;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
     @JoinColumn(name = "item_id")
     private ItemMetadata itemMetadata;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
     @JoinColumn(name = "processed_item_id")
     private ProcessedItem processedItem;
 

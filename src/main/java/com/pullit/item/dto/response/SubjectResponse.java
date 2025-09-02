@@ -36,6 +36,8 @@ public class SubjectResponse {
 
     private String areaCode;
     private String areaName;
+    
+    private Integer itemCount;
 
     public static SubjectResponse from(Subject s) {
         if (s == null) return null;
@@ -54,6 +56,7 @@ public class SubjectResponse {
                 .termName(nameOf(s.getTerm()))
                 .areaCode(codeOf(s.getArea()))
                 .areaName(nameOf(s.getArea()))
+                .itemCount(s.getItemCount())
                 .build();
     }
 
