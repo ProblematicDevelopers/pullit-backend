@@ -56,4 +56,18 @@ public class DashboardController {
         DashboardStatsResponse stats = dashboardService.getDashboardStats(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success(stats));
     }
+    
+    @Operation(summary = "학생 대시보드 - 시험 목록 조회", description = "학생이 응시 가능한 일반시험과 CBT 시험을 모두 조회합니다.")
+    @GetMapping("/student/exams")
+    public ResponseEntity<ApiResponse<List<DashboardScheduleResponse>>> getStudentExams(
+            @AuthUser CustomUserDetails userDetails,
+            @RequestParam(required = false) Long classId,
+            @RequestParam(defaultValue = "20") int limit) {
+        log.info("학생 시험 목록 조회 요청: userId={}, classId={}, limit={}", 
+                userDetails.getUserId(), classId, limit);
+        
+        List<DashboardScheduleResponse> exams = dashboardService.getStudentUpcomingExams(
+                userDetails.getUserId(), classId, limit);
+        return ResponseEntity.ok(ApiResponse.success(exams));
+    }
 }

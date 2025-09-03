@@ -51,11 +51,11 @@ public class ExamAssignmentService {
     @NotificationTrigger(
         type = NotificationType.EXAM_ASSIGNED,
         multipleUsers = true,
-        userIdsExpression = "#result.assignedClasses.![studentCount > 0 ? classId : null]",
+        userIdsExpression = "#result.notifiedStudentIds",
         title = "'시험 출제 알림'",
         message = "'「' + #result.examName + '」 시험이 ' + #result.examDate + ' ' + #result.examTime + '에 예정되어 있습니다.'",
         targetUrl = "'/exams/' + #result.examId",
-        condition = "#request.sendNotification == true"
+        condition = "#request.sendNotification == true && #result.notifiedStudentIds != null && !#result.notifiedStudentIds.isEmpty()"
     )
     public ExamAssignmentResponse assignExamToClasses(ExamAssignmentRequest request) {
         log.info("시험 출제 요청 시작 - examId: {}, classIds: {}", request.getExamId(), request.getClassIds());
@@ -88,10 +88,11 @@ public class ExamAssignmentService {
         List<ExamAssignment> savedAssignments = examAssignmentRepository.saveAll(assignments);
         log.info("{}개 학급에 시험 출제 완료", savedAssignments.size());
 
-        // 7. 알림 발송 (NotificationTrigger 어노테이션이 자동 처리)
+        // 7. 알림 발송을 위한 학생 ID 수집
+        List<Long> studentIds = null;
         if (request.getSendNotification()) {
             // 알림 발송을 위한 학생 ID 목록 수집
-            List<Long> studentIds = collectStudentIds(classes);
+            studentIds = collectStudentIds(classes);
             log.info("{}명의 학생에게 알림 발송 예정", studentIds.size());
             
             // 출제 정보에 알림 발송 상태 업데이트
@@ -103,6 +104,11 @@ public class ExamAssignmentService {
         // 8. 응답 생성
         ExamAssignmentResponse response = ExamAssignmentResponse.fromMultiple(savedAssignments);
         response.setMessage(generateSuccessMessage(savedAssignments.size(), userExam.getExamName()));
+        
+        // 9. 알림 발송 대상 학생 ID 설정 (NotificationTrigger 어노테이션이 사용)
+        if (studentIds != null && !studentIds.isEmpty()) {
+            response.setNotifiedStudentIds(studentIds);
+        }
         
         return response;
     }

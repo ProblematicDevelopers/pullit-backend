@@ -14,6 +14,9 @@ import com.pullit.item.dto.response.SmartSelectionResponse;
 import com.pullit.item.entity.ItemHtmlData;
 import com.pullit.item.entity.ItemImageData;
 import com.pullit.item.entity.ItemMetadata;
+import com.pullit.itemprocess.dto.request.ProcessItemMetadataSearchRequest;
+import com.pullit.itemprocess.dto.response.ProcessItemMetadataResponse;
+import com.pullit.itemprocess.service.ProcessItemMetadataService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +38,7 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     private final ItemHtmlDataRepository itemHtmlDataRepository;
     private final ItemImageDataRepository itemImageDataRepository;
     private final ItemMetadataRepository itemMetadataRepository;
+    private final ProcessItemMetadataService processItemMetadataService;
 
     @Override
     @RedisCacheable(
@@ -49,14 +53,27 @@ public class ItemSearchServiceImpl implements ItemSearchService {
     )
     @LoggingTrace(level = LoggingTrace.LogLevel.INFO, logExecutionTime = true, logParameters = true)
     public Page<ItemSearchResponse> searchItems(ItemSearchRequest request) {
-        log.info("[인덱스 없음] 문항 검색 시작: {}",request);
+        log.info("[인덱스 없음] 문항 검색 시작: {}, itemSource: {}", request, request.getItemSource());
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-
-        Page<ItemMetadata> itemPage = itemMetadataRepository.searchItems(request, pageable);
-        log.info("검색 결과: {} 건", itemPage.getTotalElements());
-
-        return itemPage.map(this::convertToResponse);
+        
+        // itemSource에 따라 다른 검색 수행
+        String itemSource = request.getItemSource() != null ? request.getItemSource() : "REGULAR";
+        
+        switch (itemSource) {
+            case "OCR":
+                // OCR 문항만 검색
+                return searchOcrItems(request, pageable);
+            case "BOTH":
+                // 둘 다 검색 후 병합 (현재는 일반 문항만 반환, 추후 병합 로직 구현 필요)
+                return searchBothItems(request, pageable);
+            case "REGULAR":
+            default:
+                // 기존 일반 문항 검색
+                Page<ItemMetadata> itemPage = itemMetadataRepository.searchItems(request, pageable);
+                log.info("일반 문항 검색 결과: {} 건", itemPage.getTotalElements());
+                return itemPage.map(this::convertToResponse);
+        }
     }
 
     @Override
@@ -193,6 +210,89 @@ public class ItemSearchServiceImpl implements ItemSearchService {
         }
 
         return builder.build();
+    }
+
+    /**
+     * OCR 문항 검색
+     */
+    private Page<ItemSearchResponse> searchOcrItems(ItemSearchRequest request, Pageable pageable) {
+        log.info("OCR 문항 검색 시작");
+        
+        // ProcessItemMetadataSearchRequest로 변환
+        ProcessItemMetadataSearchRequest ocrRequest = ProcessItemMetadataSearchRequest.builder()
+                .subjectId(request.getSubjectId())
+                .keyword(request.getKeyword())
+                .page(request.getPage())
+                .size(request.getSize())
+                .sortBy(request.getSortBy())
+                .sortDirection(request.getSortOrder())  // sortDirection으로 변경
+                .build();
+        
+        // 난이도 필터 적용
+        if (request.getDifficultyCode() != null && !request.getDifficultyCode().isEmpty()) {
+            ocrRequest.setDifficultyCode(request.getDifficultyCode().get(0));
+        }
+        
+        // 문제 유형 필터 적용
+        if (request.getQuestionFormCode() != null && !request.getQuestionFormCode().isEmpty()) {
+            ocrRequest.setQuestionFormCode(request.getQuestionFormCode().get(0));
+        }
+        
+        // OCR 문항 검색
+        Page<ProcessItemMetadataResponse> ocrPage = processItemMetadataService.searchProcessItemMetadata(ocrRequest);
+        log.info("OCR 문항 검색 결과: {} 건", ocrPage.getTotalElements());
+        
+        // ProcessItemMetadataResponse를 ItemSearchResponse로 변환
+        return ocrPage.map(this::convertOcrToResponse);
+    }
+
+    /**
+     * OCR 응답을 ItemSearchResponse로 변환
+     */
+    private ItemSearchResponse convertOcrToResponse(ProcessItemMetadataResponse ocrItem) {
+        return ItemSearchResponse.builder()
+                .itemId(ocrItem.getItemId())
+                .subjectId(ocrItem.getSubjectId())
+                .subjectName(ocrItem.getSubjectName())
+                .hasImageData(ocrItem.getHasImageData())
+                .hasHtmlData(ocrItem.getHasHtmlData())
+                .questionForm(ocrItem.getQuestionForm())
+                .difficulty(ocrItem.getDifficulty())
+                .chapterHierarchy(ocrItem.getChapterHierarchy())
+                .passageId(ocrItem.getPassageId())
+                .questionHtml(ocrItem.getQuestionHtml())
+                .answerHtml(ocrItem.getAnswerHtml())
+                .explainHtml(ocrItem.getExplainHtml())
+                .passageHtml(ocrItem.getPassageHtml())
+                .choice1Html(ocrItem.getChoice1Html())
+                .choice2Html(ocrItem.getChoice2Html())
+                .choice3Html(ocrItem.getChoice3Html())
+                .choice4Html(ocrItem.getChoice4Html())
+                .choice5Html(ocrItem.getChoice5Html())
+                .isOcrItem(true)  // OCR 문항 표시
+                .createdDate(ocrItem.getCreatedDate())
+                .updatedDate(ocrItem.getUpdatedDate())
+                .build();
+    }
+
+    /**
+     * 일반 문항과 OCR 문항 모두 검색
+     */
+    private Page<ItemSearchResponse> searchBothItems(ItemSearchRequest request, Pageable pageable) {
+        log.info("일반 문항과 OCR 문항 모두 검색");
+        
+        // 일반 문항 검색
+        Page<ItemMetadata> regularItems = itemMetadataRepository.searchItems(request, pageable);
+        Page<ItemSearchResponse> regularPage = regularItems.map(this::convertToResponse);
+        
+        // OCR 문항 검색
+        Page<ItemSearchResponse> ocrPage = searchOcrItems(request, pageable);
+        
+        // TODO: 두 결과를 병합하는 로직 구현 필요
+        // 현재는 일반 문항만 반환
+        log.info("일반 문항: {} 건, OCR 문항: {} 건", regularPage.getTotalElements(), ocrPage.getTotalElements());
+        
+        return regularPage;
     }
 
     @Override

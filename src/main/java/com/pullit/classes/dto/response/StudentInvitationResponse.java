@@ -16,6 +16,7 @@ public class StudentInvitationResponse {
     private int failedCount;
     
     private List<InvitationResult> results;
+    private List<Long> invitedStudentIds;  // 초대된 학생들의 ID 목록
     
     @Data
     @Builder

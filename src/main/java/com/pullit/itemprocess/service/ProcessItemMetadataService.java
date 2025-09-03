@@ -358,7 +358,12 @@ public class ProcessItemMetadataService {
             if (htmlData.getChoice3Html() != null) choices.add(htmlData.getChoice3Html());
             if (htmlData.getChoice4Html() != null) choices.add(htmlData.getChoice4Html());
             if (htmlData.getChoice5Html() != null) choices.add(htmlData.getChoice5Html());
-            builder.choices(choices);
+            builder.choices(choices)
+                .choice1Html(htmlData.getChoice1Html())
+                .choice2Html(htmlData.getChoice2Html())
+                .choice3Html(htmlData.getChoice3Html())
+                .choice4Html(htmlData.getChoice4Html())
+                .choice5Html(htmlData.getChoice5Html());
         }
         
         // 이미지 데이터가 있으면 포함

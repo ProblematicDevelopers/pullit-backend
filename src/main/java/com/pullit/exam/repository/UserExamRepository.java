@@ -79,6 +79,17 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long>, Query
     Long countByCreatedBy(Long userId);
     
     /**
+     * 학급에 할당된 예정 시험 조회 (학생 대시보드용)
+     */
+    @Query("SELECT ue FROM UserExam ue WHERE ue.classId = :classId " +
+           "AND ue.examDate >= :fromDate AND ue.deletedDate IS NULL " +
+           "AND (ue.visibility = 'PUBLIC' OR ue.visibility = 'SCHOOL') " +
+           "ORDER BY ue.examDate ASC")
+    List<UserExam> findUpcomingExamsByClass(@Param("classId") Long classId, 
+                                            @Param("fromDate") LocalDate fromDate,
+                                            Pageable pageable);
+    
+    /**
      * 사용자가 생성한 시험의 총 문항 수 조회
      */
     @Query("SELECT SUM(ue.totalItems) FROM UserExam ue WHERE ue.createdBy = :userId " +

@@ -33,6 +33,7 @@ public class ExamAssignmentResponse {
     private String status;
     private Integer totalStudents;
     private String message;
+    private List<Long> notifiedStudentIds; // 알림 발송된 학생 ID 목록
 
     @Getter
     @Setter

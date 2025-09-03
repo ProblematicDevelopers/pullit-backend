@@ -251,9 +251,9 @@ public class ClassesController {
     @NotificationTrigger(
         type = NotificationType.CLASS_INVITATION,
         multipleUsers = true,
-        userIdsExpression = "#result.invitedStudentIds",
+        userIdsExpression = "#result.body.data.invitedStudentIds",
         title = "'반 초대'",
-        message = "#result.className + ' 반에 초대되었습니다'",
+        message = "#result.body.data.className + ' 반에 초대되었습니다'",
         targetUrl = "'/student/class-room/my-class'"
     )
     public ResponseEntity<ApiResponse<StudentInvitationResponse>> inviteStudents(
