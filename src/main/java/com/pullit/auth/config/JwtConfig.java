@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import com.pullit.auth.security.SessionJwtValidator;
+import com.pullit.auth.security.BlacklistJwtValidator;
 
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -31,6 +32,7 @@ public class JwtConfig {
     private final RSAPublicKey publicKey;
     private final RSAPrivateKey privateKey;
     private final SessionJwtValidator sessionJwtValidator;
+    private final BlacklistJwtValidator blacklistJwtValidator;
 
 
     @Bean
@@ -44,9 +46,10 @@ public class JwtConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(publicKey).build();
-        // Keep default timestamp validation and add session validator
+        // Chain validators: timestamp, blacklist, and session validation
         OAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(
                 new JwtTimestampValidator(),
+                blacklistJwtValidator,  // Check blacklist before session
                 sessionJwtValidator
         );
         decoder.setJwtValidator(validator);

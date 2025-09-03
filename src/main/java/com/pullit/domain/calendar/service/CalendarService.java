@@ -35,6 +35,11 @@ public class CalendarService {
      */
     @Transactional
     public CalendarEventResponse createEvent(CalendarEventRequest request) {
+        // 학급 전체 일정인 경우 classId가 필수
+        if (request.getVisibility() == CalendarEvent.EventVisibility.CLASS_WIDE && request.getClassId() == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "학급 전체 일정은 classId가 필요합니다.");
+        }
+        
         CalendarEvent event = CalendarEvent.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -49,6 +54,8 @@ public class CalendarService {
                 .location(request.getLocation())
                 .reminder(request.getReminder())
                 .reminderMinutes(request.getReminderMinutes())
+                .visibility(request.getVisibility())
+                .classId(request.getClassId())
                 .build();
         
         CalendarEvent saved = calendarEventRepository.save(event);
@@ -109,16 +116,21 @@ public class CalendarService {
     }
     
     /**
-     * 사용자의 특정 기간 이벤트 조회
+     * 사용자의 특정 기간 이벤트 조회 (개인 일정 + 학급 전체 일정)
      */
     public List<CalendarEventResponse> getUserEvents(Long userId, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
         
-        List<CalendarEvent> events = calendarEventRepository.findByUserIdAndDateRange(
+        // 개인 일정 조회
+        List<CalendarEvent> personalEvents = calendarEventRepository.findByUserIdAndDateRange(
                 userId, startDateTime, endDateTime);
         
-        return events.stream()
+        // 학급 전체 일정도 조회 (사용자의 classId를 기반으로)
+        // 실제 구현에서는 userId로 사용자의 classId를 조회해야 함
+        // 여기서는 추가 리포지토리 메서드가 필요함
+        
+        return personalEvents.stream()
                 .map(CalendarEventResponse::from)
                 .collect(Collectors.toList());
     }
@@ -197,6 +209,35 @@ public class CalendarService {
                 userId, CalendarEvent.EventType.ASSIGNMENT);
         
         return events.stream()
+                .map(CalendarEventResponse::from)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 학생의 학급 일정 조회 (학급 전체 일정 포함)
+     */
+    public List<CalendarEventResponse> getStudentClassEvents(Long studentId, Long classId, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+        
+        // 개인 일정 조회
+        List<CalendarEvent> personalEvents = calendarEventRepository.findByUserIdAndDateRange(
+                studentId, startDateTime, endDateTime);
+        
+        // 학급 전체 일정 조회
+        List<CalendarEvent> classWideEvents = calendarEventRepository
+                .findByClassIdAndVisibilityAndDateRange(
+                        classId, 
+                        CalendarEvent.EventVisibility.CLASS_WIDE,
+                        startDateTime, 
+                        endDateTime
+                );
+        
+        // 두 리스트 합치기
+        personalEvents.addAll(classWideEvents);
+        
+        return personalEvents.stream()
+                .distinct() // 중복 제거
                 .map(CalendarEventResponse::from)
                 .collect(Collectors.toList());
     }

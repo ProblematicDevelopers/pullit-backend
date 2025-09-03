@@ -44,17 +44,105 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 
                 .authorizeHttpRequests(auth -> auth
-                        // Swagger 관련 경로 허용
+                        // ===== PUBLIC ENDPOINTS (인증 불필요) =====
+                        // Swagger 및 API 문서
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        // 테스트용 엔드포인트 허용
-                        .requestMatchers("/api/test/**").permitAll()
-                        // OAuth2 관련 엔드포인트 허용
+                        
+                        // WebSocket 엔드포인트 (WebSocket은 초기 핸드셰이크만 허용, 실제 인증은 WebSocket 레벨에서 처리)
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/ws/notifications/**").permitAll()
+                        .requestMatchers("/sockjs-node/**").permitAll()
+                        .requestMatchers("/stomp/**").permitAll()
+                        
+                        // 인증/인가 관련 엔드포인트
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/register").permitAll()
+                        .requestMatchers("/api/auth/refresh").permitAll()
+                        .requestMatchers("/api/auth/refresh-token").permitAll()
+                        .requestMatchers("/api/auth/validate").permitAll()
                         .requestMatchers("/api/auth/oauth2/**").permitAll()
                         .requestMatchers("/api/oauth2/**").permitAll()
-                        // 사용자 정보 조회 (개발 환경 테스트용)
-                        .requestMatchers("/api/users/me").permitAll()
-                        .requestMatchers("/api/users/check/**").permitAll()  // 중복 체크도 허용
-                        .anyRequest().permitAll()  // 개발 중에는 모든 요청 허용
+                        
+                        // 사용자 중복 체크 (회원가입시 필요)
+                        .requestMatchers("/api/users/check/**").permitAll()
+                        
+                        // 이메일/SMS 인증 관련
+                        .requestMatchers("/api/verification/**").permitAll()
+                        
+                        // 이미지 프록시 (공개 이미지)
+                        .requestMatchers("/api/images/proxy/**").permitAll()
+                        
+                        // ===== ADMIN ONLY ENDPOINTS =====
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/schools/manage/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/users/manage/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/system/**").hasAuthority("ROLE_ADMIN")
+                        
+                        // ===== TEACHER ENDPOINTS =====
+                        // 교사 전용 통계 및 관리
+                        .requestMatchers("/api/teacher/**").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/teacher-live-exams/**").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/classes/manage/**").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/assignments/create").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/assignments/*/edit").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/assignments/*/delete").hasAuthority("ROLE_TEACHER")
+                        
+                        // 교사가 학생 관리
+                        .requestMatchers("/api/students/manage/**").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/classes/*/students/**").hasAuthority("ROLE_TEACHER")
+                        
+                        // 시험 생성 및 관리 (교사만)
+                        .requestMatchers("/api/exams/create").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/exams/*/edit").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/exams/*/delete").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/exams/*/assign").hasAuthority("ROLE_TEACHER")
+                        
+                        // 문항 처리 및 OCR (교사만)
+                        .requestMatchers("/api/item-process/**").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/ocr/**").hasAuthority("ROLE_TEACHER")
+                        .requestMatchers("/api/file-history/**").hasAuthority("ROLE_TEACHER")
+                        
+                        // ===== STUDENT ENDPOINTS =====
+                        // 학생 전용 엔드포인트
+                        .requestMatchers("/api/students/me/**").hasAuthority("ROLE_STUDENT")
+                        .requestMatchers("/api/submissions/submit").hasAuthority("ROLE_STUDENT")
+                        .requestMatchers("/api/cbt/student/**").hasAuthority("ROLE_STUDENT")
+                        
+                        // ===== TEACHER OR STUDENT (교사 또는 학생) =====
+                        .requestMatchers("/api/classes/**").hasAnyAuthority("ROLE_TEACHER", "ROLE_STUDENT")
+                        .requestMatchers("/api/assignments/**").hasAnyAuthority("ROLE_TEACHER", "ROLE_STUDENT")
+                        .requestMatchers("/api/submissions/**").hasAnyAuthority("ROLE_TEACHER", "ROLE_STUDENT")
+                        .requestMatchers("/api/exams/**").hasAnyAuthority("ROLE_TEACHER", "ROLE_STUDENT")
+                        .requestMatchers("/api/user-exams/**").hasAnyAuthority("ROLE_TEACHER", "ROLE_STUDENT")
+                        .requestMatchers("/api/cbt/**").hasAnyAuthority("ROLE_TEACHER", "ROLE_STUDENT")
+                        .requestMatchers("/api/reports/**").hasAnyAuthority("ROLE_TEACHER", "ROLE_STUDENT")
+                        .requestMatchers("/api/stats/**").hasAnyAuthority("ROLE_TEACHER", "ROLE_STUDENT")
+                        
+                        // ===== AUTHENTICATED USERS (로그인한 모든 사용자) =====
+                        // 사용자 프로필 관련
+                        .requestMatchers("/api/users/me").authenticated()
+                        .requestMatchers("/api/users/*/profile").authenticated()
+                        .requestMatchers("/api/teachers/me").authenticated()
+                        
+                        // 일반 조회 기능
+                        .requestMatchers("/api/items/**").authenticated()
+                        .requestMatchers("/api/chapters/**").authenticated()
+                        .requestMatchers("/api/subjects/**").authenticated()
+                        .requestMatchers("/api/schools/**").authenticated()
+                        .requestMatchers("/api/calendar/**").authenticated()
+                        .requestMatchers("/api/schedule/**").authenticated()
+                        .requestMatchers("/api/notifications/**").authenticated()
+                        .requestMatchers("/api/dashboard/**").authenticated()
+                        
+                        // 파일 업로드/다운로드
+                        .requestMatchers("/api/files/**").authenticated()
+                        .requestMatchers("/api/images/**").authenticated()
+                        
+                        // 로그아웃 (인증 필요)
+                        .requestMatchers("/api/auth/logout").authenticated()
+                        
+                        // 기타 모든 요청은 인증 필요
+                        .anyRequest().authenticated()
                 )
                 
                 .exceptionHandling(exceptions -> exceptions

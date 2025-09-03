@@ -29,7 +29,7 @@ import java.util.Optional;
 public class OAuth2Service {
 
     private final UserService userService;
-    private final JwtService jwtService;
+    private final EnhancedJwtService jwtService;
     private final ActiveSessionService activeSessionService;
     private final com.pullit.auth.config.JwtProperties jwtProperties;
 
