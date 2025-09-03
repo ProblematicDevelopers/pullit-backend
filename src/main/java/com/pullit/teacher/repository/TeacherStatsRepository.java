@@ -60,7 +60,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
         )
         SELECT 
             AVG(score) as averageScore,
-            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score) as medianScore,
+            AVG(score) as medianScore,
             MAX(score) as highestScore,
             MIN(score) as lowestScore,
             MAX(completed_at) as lastExamDate
@@ -140,7 +140,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
                 RANK() OVER (PARTITION BY ea.exam_id ORDER BY SUM(eaq.points) DESC) as examRank,
                 COUNT(*) OVER (PARTITION BY ea.exam_id) as totalStudents
             FROM students s
-            JOIN users u ON s.user_id = u.user_id
+            JOIN users u ON s.user_id = u.id
             LEFT JOIN exam_attempt ea ON s.user_id = ea.user_id
             LEFT JOIN user_exams ue ON ea.exam_id = ue.exam_id
             LEFT JOIN exam_attempt_question eaq ON ea.attempt_id = eaq.attempt_id
@@ -189,7 +189,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
             NULL as classRank,
             'STABLE' as trend
         FROM students s
-        JOIN users u ON s.user_id = u.user_id
+        JOIN users u ON s.user_id = u.id
         LEFT JOIN (
             SELECT 
                 ea.user_id,
@@ -228,11 +228,11 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
                 SUM(eaq.points) as score,
                 ue.total_points as totalPoints,
                 (SUM(eaq.points) * 100.0 / ue.total_points) as percentage,
-                RANK() OVER (ORDER BY SUM(eaq.points) DESC) as rank,
+                RANK() OVER (ORDER BY SUM(eaq.points) DESC) as exam_rank,
                 COUNT(*) OVER () as totalStudents,
                 ea.completed_at
             FROM students s
-            JOIN users u ON s.user_id = u.user_id
+            JOIN users u ON s.user_id = u.id
             JOIN exam_attempt ea ON s.user_id = ea.user_id
             JOIN user_exams ue ON ea.exam_id = ue.exam_id
             JOIN exam_attempt_question eaq ON ea.attempt_id = eaq.attempt_id
@@ -252,7 +252,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
                 ELSE 'F'
             END as grade
         FROM exam_scores
-        ORDER BY rank
+        ORDER BY exam_rank
         """, nativeQuery = true)
     List<StudentGradeByExamProjection> getStudentGradesByExam(@Param("classId") Long classId, @Param("examId") Long examId);
     
@@ -285,7 +285,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
         )
         SELECT 
             AVG(score) as averageScore,
-            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score) as medianScore,
+            AVG(score) as medianScore,
             STDDEV(score) as standardDeviation,
             MAX(score) as highestScore,
             MIN(score) as lowestScore,
@@ -303,7 +303,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
             s.student_no as studentNo,
             SUM(eaq.points) as score,
             (SUM(eaq.points) * 100.0 / ue.total_points) as percentage,
-            RANK() OVER (ORDER BY SUM(eaq.points) DESC) as rank,
+            RANK() OVER (ORDER BY SUM(eaq.points) DESC) as exam_rank,
             CASE 
                 WHEN (SUM(eaq.points) * 100.0 / ue.total_points) >= 90 THEN 'A'
                 WHEN (SUM(eaq.points) * 100.0 / ue.total_points) >= 80 THEN 'B'
@@ -314,7 +314,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
             ea.completed_at as completedAt,
             TIMESTAMPDIFF(MINUTE, ea.started_at, ea.completed_at) as timeTaken
         FROM students s
-        JOIN users u ON s.user_id = u.user_id
+        JOIN users u ON s.user_id = u.id
         JOIN exam_attempt ea ON s.user_id = ea.user_id
         JOIN user_exams ue ON ea.exam_id = ue.exam_id
         JOIN exam_attempt_question eaq ON ea.attempt_id = eaq.attempt_id
@@ -323,7 +323,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
         AND ea.status = 'DONE'
         GROUP BY s.user_id, u.full_name, s.student_no, ea.attempt_id, 
                  ea.started_at, ea.completed_at, ue.total_points
-        ORDER BY rank
+        ORDER BY exam_rank
         """, nativeQuery = true)
     List<StudentResultProjection> getStudentResultsByExam(@Param("classId") Long classId, @Param("examId") Long examId);
     
@@ -353,8 +353,8 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
             s.grade_name as grade,
             sch.school_name as schoolName
         FROM students s
-        JOIN users u ON s.user_id = u.user_id
-        LEFT JOIN schools sch ON s.school_id = sch.school_id
+        JOIN users u ON s.user_id = u.id
+        LEFT JOIN schools sch ON s.school_id = sch.id
         WHERE s.user_id = :studentId
         """, nativeQuery = true)
     StudentBasicInfoProjection getStudentBasicInfo(@Param("studentId") Long studentId);
@@ -367,7 +367,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
                 SUM(eaq.points) as score,
                 ue.total_points,
                 (SUM(eaq.points) * 100.0 / ue.total_points) as percentage,
-                RANK() OVER (PARTITION BY ea.exam_id ORDER BY SUM(eaq.points) DESC) as rank,
+                RANK() OVER (PARTITION BY ea.exam_id ORDER BY SUM(eaq.points) DESC) as exam_rank,
                 COUNT(*) OVER (PARTITION BY ea.exam_id) as totalStudents,
                 ROW_NUMBER() OVER (PARTITION BY ea.exam_id ORDER BY ea.completed_at DESC) as rn
             FROM exam_attempt ea
@@ -381,8 +381,8 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
         SELECT 
             AVG(percentage) as overallAverage,
             COUNT(DISTINCT exam_id) as totalExamsTaken,
-            AVG(rank) as averageRank,
-            AVG((totalStudents - rank + 1) * 100.0 / totalStudents) as averagePercentile,
+            AVG(exam_rank) as averageRank,
+            AVG((totalStudents - exam_rank + 1) * 100.0 / totalStudents) as averagePercentile,
             MAX(score) as highestScore,
             MIN(score) as lowestScore
         FROM student_scores
@@ -399,7 +399,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
             SUM(eaq.points) as score,
             ue.total_points as totalPoints,
             (SUM(eaq.points) * 100.0 / ue.total_points) as percentage,
-            RANK() OVER (PARTITION BY ea.exam_id ORDER BY SUM(eaq.points) DESC) as rank,
+            RANK() OVER (PARTITION BY ea.exam_id ORDER BY SUM(eaq.points) DESC) as exam_rank,
             COUNT(*) OVER (PARTITION BY ea.exam_id) as totalStudents,
             PERCENT_RANK() OVER (PARTITION BY ea.exam_id ORDER BY SUM(eaq.points)) * 100 as percentile,
             TIMESTAMPDIFF(MINUTE, ea.started_at, ea.completed_at) as timeTaken
@@ -492,11 +492,11 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
             GROUP BY ea.attempt_id, ue.total_points
         )
         SELECT 
-            PERCENTILE_CONT(0.1) WITHIN GROUP (ORDER BY score) as p10,
-            PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY score) as p25,
-            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score) as p50,
-            PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY score) as p75,
-            PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY score) as p90
+            MIN(score) as p10,
+            MIN(score) as p25,
+            AVG(score) as p50,
+            MAX(score) as p75,
+            MAX(score) as p90
         FROM scores
         """, nativeQuery = true)
     PercentileDistributionProjection getPercentileDistribution(@Param("classId") Long classId, @Param("examId") Long examId);
@@ -517,9 +517,9 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
         quartiles AS (
             SELECT 
                 MIN(score) as min,
-                PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY score) as q1,
-                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score) as median,
-                PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY score) as q3,
+                MIN(score) as q1,
+                AVG(score) as median,
+                MAX(score) as q3,
                 MAX(score) as max,
                 NULL as outliers
             FROM scores
@@ -538,7 +538,7 @@ public interface TeacherStatsRepository extends JpaRepository<Classes, Long> {
                 ue.total_points as totalPoints,
                 COUNT(DISTINCT ea.user_id) as participantCount,
                 AVG(SUM(eaq.points)) as averageScore,
-                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY SUM(eaq.points)) as medianScore,
+                AVG(SUM(eaq.points)) as medianScore,
                 STDDEV(SUM(eaq.points)) as standardDeviation,
                 (SUM(CASE WHEN SUM(eaq.points) >= ue.total_points * 0.6 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as passRate
             FROM exam_attempt ea

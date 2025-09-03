@@ -246,4 +246,46 @@ public class DashboardService {
     private Integer getExamParticipants(Long examId) {
         return attemptExamRepository.countByExamId(examId);
     }
+    
+    // 학생용 - 예정된 시험 조회 (일반시험 + CBT 시험)
+    public List<DashboardScheduleResponse> getStudentUpcomingExams(Long studentId, Long classId, int limit) {
+        List<DashboardScheduleResponse> exams = new ArrayList<>();
+        
+        // 1. 일반 시험(UserExam) 조회 - 해당 학급에 할당된 시험
+        if (classId != null) {
+            List<UserExam> upcomingUserExams = userExamRepository.findUpcomingExamsByClass(
+                classId, LocalDate.now(), PageRequest.of(0, limit/2)
+            );
+            
+            for (UserExam exam : upcomingUserExams) {
+                if (exam.getExamDate() != null) {
+                    exams.add(DashboardScheduleResponse.builder()
+                        .id(exam.getId())
+                        .title(exam.getExamName())
+                        .type("general_exam") // 일반시험 타입
+                        .date(exam.getExamDate())
+                        .scheduledDateTime(exam.getExamDate().atStartOfDay())
+                        .dateDisplay(getDateDisplay(exam.getExamDate()))
+                        .timeDisplay(exam.getTimeLimit() != null ? 
+                            String.format("제한시간: %d분", exam.getTimeLimit()) : "제한시간 없음")
+                        .description(String.format("%s %s - %d문항", 
+                            exam.getGradeName(), exam.getAreaName(), exam.getTotalItems()))
+                        .examId(exam.getId())
+                        .status("upcoming")
+                        .build());
+                }
+            }
+        }
+        
+        // 2. CBT 시험 조회 - 현재는 AttemptExam에서 간접 조회
+        // TODO: CbtExam 엔티티가 추가되면 직접 조회하도록 수정
+        // 임시로 빈 리스트 반환 (CbtExam 엔티티가 없어서)
+        // 실제 구현 시 CbtExam 엔티티와 Repository 생성 필요
+        
+        // 날짜순 정렬 후 limit만큼 반환
+        return exams.stream()
+            .sorted((a, b) -> a.getScheduledDateTime().compareTo(b.getScheduledDateTime()))
+            .limit(limit)
+            .collect(Collectors.toList());
+    }
 }

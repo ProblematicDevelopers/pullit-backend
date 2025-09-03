@@ -60,10 +60,10 @@ public class TeacherStatsServiceImpl implements TeacherStatsService {
                 .className(classEntity.getClassName())
                 .totalStudents(totalStudents)
                 .totalExams(totalExams)
-                .classAverageScore(classStats != null ? classStats.getAverageScore() : 0.0)
-                .classMedianScore(classStats != null ? classStats.getMedianScore() : 0.0)
-                .highestScore(classStats != null ? classStats.getHighestScore() : 0.0)
-                .lowestScore(classStats != null ? classStats.getLowestScore() : 0.0)
+                .classAverageScore(classStats != null && classStats.getAverageScore() != null ? classStats.getAverageScore() : 0.0)
+                .classMedianScore(classStats != null && classStats.getMedianScore() != null ? classStats.getMedianScore() : 0.0)
+                .highestScore(classStats != null && classStats.getHighestScore() != null ? classStats.getHighestScore() : 0.0)
+                .lowestScore(classStats != null && classStats.getLowestScore() != null ? classStats.getLowestScore() : 0.0)
                 .lastExamDate(classStats != null ? classStats.getLastExamDate() : null)
                 .recentExams(recentExams)
                 .gradeDistribution(ClassGradeOverviewResponse.GradeRangeCount.builder()
@@ -291,8 +291,8 @@ public class TeacherStatsServiceImpl implements TeacherStatsService {
             String examName) {
         // 백분위 추정 (rank와 전체 인원 기반)
         Double percentile = null;
-        if (projection.getTotalStudents() != null && projection.getTotalStudents() > 0 && projection.getRank() != null) {
-            percentile = (projection.getTotalStudents() - projection.getRank() + 1) * 100.0 / projection.getTotalStudents();
+        if (projection.getTotalStudents() != null && projection.getTotalStudents() > 0 && projection.getExamRank() != null) {
+            percentile = (projection.getTotalStudents() - projection.getExamRank() + 1) * 100.0 / projection.getTotalStudents();
         }
 
         StudentGradeResponse.ExamScore examScore = StudentGradeResponse.ExamScore.builder()
@@ -301,7 +301,7 @@ public class TeacherStatsServiceImpl implements TeacherStatsService {
                 .score(projection.getScore() != null ? projection.getScore().intValue() : null)
                 .totalPoints(projection.getTotalPoints() != null ? projection.getTotalPoints().intValue() : null)
                 .percentage(projection.getPercentage())
-                .rank(projection.getRank())
+                .rank(projection.getExamRank())
                 .grade(projection.getGrade())
                 .build();
 
@@ -312,7 +312,7 @@ public class TeacherStatsServiceImpl implements TeacherStatsService {
                 // 단일 시험 기준으로 평균 점수는 해당 시험 퍼센티지로 설정
                 .averageScore(projection.getPercentage())
                 .totalExamsTaken(1)
-                .classRank(projection.getRank())
+                .classRank(projection.getExamRank())
                 .percentile(percentile)
                 .examScores(List.of(examScore))
                 .trend("STABLE")
@@ -326,7 +326,7 @@ public class TeacherStatsServiceImpl implements TeacherStatsService {
             .studentNo(projection.getStudentNo())
             .score(projection.getScore() != null ? projection.getScore().intValue() : null)
             .percentage(projection.getPercentage())
-            .rank(projection.getRank())
+            .rank(projection.getExamRank())
             .grade(projection.getGrade())
             .completedAt(projection.getCompletedAt())
             .timeTaken(projection.getTimeTaken())
@@ -351,7 +351,7 @@ public class TeacherStatsServiceImpl implements TeacherStatsService {
             .score(projection.getScore() != null ? projection.getScore().intValue() : null)
             .totalPoints(projection.getTotalPoints() != null ? projection.getTotalPoints().intValue() : null)
             .percentage(projection.getPercentage())
-            .rank(projection.getRank())
+            .rank(projection.getExamRank())
             .totalStudents(projection.getTotalStudents())
             .percentile(projection.getPercentile())
             .timeTaken(projection.getTimeTaken())

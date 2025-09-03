@@ -18,12 +18,14 @@ import com.pullit.exam.entity.UserExamItem;
 import com.pullit.exam.enums.ExamVisibility;
 import com.pullit.exam.repository.UserExamRepository;
 import com.pullit.item.dao.ItemMetadataRepository;
+import com.pullit.schedule.entity.Schedule;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +40,7 @@ public class UserExamServiceImpl implements UserExamService {
     private final S3Service s3Service;
     private final FileService fileService;
     private final FileMetadataRepository fileMetadataRepository;
+    private final com.pullit.schedule.repository.ScheduleRepository scheduleRepository;
 
     @Override
     public UserExamResponse createExam(UserExamCreateRequest request, String pdfUrl, String answerPdfUrl) {
@@ -99,6 +102,11 @@ public class UserExamServiceImpl implements UserExamService {
         // 저장
         UserExam savedExam = userExamRepository.save(userExam);
         log.info("시험지 생성 완료: examId={}, totalItems={}", savedExam.getId(), savedExam.getTotalItems());
+
+        // 시험 날짜가 설정된 경우 일정(Schedule)에 자동 추가
+        if (savedExam.getExamDate() != null) {
+            createScheduleForExam(savedExam);
+        }
 
         return convertToResponse(savedExam);
     }
@@ -208,6 +216,11 @@ public class UserExamServiceImpl implements UserExamService {
         log.info("시험지 생성 완료: examId={}, totalItems={}, hasPdf={}", 
                 savedExam.getId(), savedExam.getTotalItems(), savedExam.hasPdf());
 
+        // 시험 날짜가 설정된 경우 일정(Schedule)에 자동 추가
+        if (savedExam.getExamDate() != null) {
+            createScheduleForExam(savedExam);
+        }
+
         // FileMetadata의 entityId 업데이트
         if (fileMetadataId != null && savedExam.getId() != null) {
             try {
@@ -299,5 +312,40 @@ public class UserExamServiceImpl implements UserExamService {
             fileMetadata.setEntityId(entityId);
             fileMetadataRepository.save(fileMetadata);
         });
+    }
+    
+    /**
+     * 시험 정보를 바탕으로 일정(Schedule)을 생성
+     */
+    private void createScheduleForExam(UserExam exam) {
+        try {
+            // 시험 시간을 오전 9시로 기본 설정 (나중에 사용자가 수정 가능)
+            LocalTime defaultExamTime = LocalTime.of(9, 0);
+            
+            Schedule schedule = Schedule.builder()
+                    .title(exam.getExamName())
+                    .description(String.format("%s %s %s 시험 - %d문항", 
+                            exam.getGradeName(), 
+                            exam.getAreaName(), 
+                            exam.getTermName(),
+                            exam.getTotalItems()))
+                    .type("exam")
+                    .scheduledDate(exam.getExamDate().atTime(defaultExamTime))
+                    .examId(exam.getId())
+                    .classId(exam.getClassId())
+                    .status("upcoming")
+                    .color("#ef4444") // 시험은 빨간색으로 표시
+                    .reminderEnabled(true)
+                    .reminderMinutes(1440) // 하루 전 알림
+                    .build();
+            
+            Schedule savedSchedule = scheduleRepository.save(schedule);
+            log.info("시험 일정 생성 완료: scheduleId={}, examId={}, examDate={}", 
+                    savedSchedule.getId(), exam.getId(), exam.getExamDate());
+                    
+        } catch (Exception e) {
+            // 일정 생성 실패해도 시험 저장은 계속 진행
+            log.error("시험 일정 생성 실패: examId={}, error={}", exam.getId(), e.getMessage());
+        }
     }
 }

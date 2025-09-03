@@ -50,6 +50,9 @@ public class ItemSearchResponse {
 
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;
+    
+    @Builder.Default
+    private Boolean isOcrItem = false;  // OCR 문항 여부
 
     // === 프론트엔드 호환용 메서드들 ===
 

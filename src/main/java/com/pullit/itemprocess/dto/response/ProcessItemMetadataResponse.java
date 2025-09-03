@@ -50,8 +50,22 @@ public class ProcessItemMetadataResponse {
     
     // 선택지 정보
     private List<String> choices;
+    private String choice1Html;
+    private String choice2Html;
+    private String choice3Html;
+    private String choice4Html;
+    private String choice5Html;
     
     // 통계 정보
     private boolean isPassageGroup;
     private int passageGroupSize; // 같은 지문 그룹의 문항 수
+    
+    // 편의 메서드
+    public Long getSubjectId() {
+        return subject != null ? subject.getSubjectId() : null;
+    }
+    
+    public String getSubjectName() {
+        return subject != null ? subject.getSubjectName() : null;
+    }
 }

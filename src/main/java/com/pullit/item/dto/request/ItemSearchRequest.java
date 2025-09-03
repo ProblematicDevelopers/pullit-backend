@@ -59,6 +59,9 @@ public class ItemSearchRequest {
 
     private Long passageId;  // 지문 ID로 필터링
 
+    @Builder.Default
+    private String itemSource = "REGULAR";  // REGULAR, OCR, BOTH - 문항 소스 선택
+
     // 편의 메서드
     public String getSort() {
         return sortBy + "," + sortOrder;

@@ -9,7 +9,7 @@ public interface StudentGradeByExamProjection {
     Double getScore();
     Double getTotalPoints();
     Double getPercentage();
-    Integer getRank();
+    Integer getExamRank();
     Integer getTotalStudents();
     String getGrade();
     LocalDateTime getCompletedAt();

@@ -8,7 +8,7 @@ public interface StudentResultProjection {
     String getStudentNo();
     Double getScore();
     Double getPercentage();
-    Integer getRank();
+    Integer getExamRank();
     String getGrade();
     LocalDateTime getCompletedAt();
     Integer getTimeTaken();

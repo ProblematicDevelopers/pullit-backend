@@ -9,7 +9,7 @@ public interface StudentExamHistoryProjection {
     Double getScore();
     Double getTotalPoints();
     Double getPercentage();
-    Integer getRank();
+    Integer getExamRank();
     Integer getTotalStudents();
     Double getPercentile();
     Integer getTimeTaken();

@@ -538,6 +538,7 @@ public class ClassesServiceImpl implements ClassesService {
 
         // 2. 초대 결과 리스트
         List<StudentInvitationResponse.InvitationResult> results = new ArrayList<>();
+        List<Long> invitedStudentIds = new ArrayList<>();  // 성공적으로 초대된 학생들의 ID
         int successCount = 0;
         int failedCount = 0;
 
@@ -616,6 +617,9 @@ public class ClassesServiceImpl implements ClassesService {
                 student.setGrade(classEntity.getClassGrade());
                 studentRepository.save(student);
 
+                // 성공적으로 초대된 학생의 ID를 리스트에 추가
+                invitedStudentIds.add(user.getId());
+
                 results.add(StudentInvitationResponse.InvitationResult.builder()
                         .email(studentInfo.getEmail())
                         .success(true)
@@ -643,6 +647,7 @@ public class ClassesServiceImpl implements ClassesService {
                 .successCount(successCount)
                 .failedCount(failedCount)
                 .results(results)
+                .invitedStudentIds(invitedStudentIds)  // 초대된 학생 ID 리스트 추가
                 .build();
     }
 
