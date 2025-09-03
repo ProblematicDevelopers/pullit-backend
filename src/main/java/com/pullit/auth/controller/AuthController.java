@@ -7,7 +7,6 @@ import com.pullit.auth.dto.response.TokenValidationResponse;
 import com.pullit.auth.service.AuthService;
 import com.pullit.auth.service.OAuth2Service;
 import com.pullit.auth.exception.SocialLoginNewUserException;
-import com.pullit.auth.service.JwtService;
 import com.pullit.common.annotation.LoggingTrace;
 import com.pullit.common.annotation.RateLimited;
 import com.pullit.common.dto.response.ApiResponse;
@@ -39,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 public class AuthController {
 
     private final AuthService authService;
-    private final JwtService jwtService;
+    private final com.pullit.auth.service.EnhancedJwtService jwtService;
     private final UserService userService;
     private final TeacherService teacherService;
     private final com.pullit.auth.service.ActiveSessionService activeSessionService;

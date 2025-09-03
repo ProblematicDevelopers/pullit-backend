@@ -28,7 +28,7 @@ import java.util.Optional;
 public class AuthService {
 
     private final UserService userService;
-    private final JwtService jwtService;
+    private final EnhancedJwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final TeacherService teacherService;
     private final StudentService studentService;

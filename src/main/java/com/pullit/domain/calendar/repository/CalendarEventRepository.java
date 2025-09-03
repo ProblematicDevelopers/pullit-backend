@@ -54,4 +54,18 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Lo
     List<CalendarEvent> findEventsNeedingReminder(
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
+    
+    // 학급 전체 일정 조회
+    @Query("SELECT e FROM CalendarEvent e " +
+           "WHERE e.classId = :classId " +
+           "AND e.visibility = :visibility " +
+           "AND ((e.startDateTime BETWEEN :startDate AND :endDate) " +
+           "OR (e.endDateTime BETWEEN :startDate AND :endDate) " +
+           "OR (e.startDateTime <= :startDate AND e.endDateTime >= :endDate)) " +
+           "ORDER BY e.startDateTime")
+    List<CalendarEvent> findByClassIdAndVisibilityAndDateRange(
+            @Param("classId") Long classId,
+            @Param("visibility") CalendarEvent.EventVisibility visibility,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 }

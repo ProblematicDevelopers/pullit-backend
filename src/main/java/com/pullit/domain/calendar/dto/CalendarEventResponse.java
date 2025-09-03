@@ -28,6 +28,8 @@ public class CalendarEventResponse {
     private String location;
     private Boolean reminder;
     private Integer reminderMinutes;
+    private CalendarEvent.EventVisibility visibility;
+    private Long classId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
@@ -47,8 +49,10 @@ public class CalendarEventResponse {
                 .location(event.getLocation())
                 .reminder(event.getReminder())
                 .reminderMinutes(event.getReminderMinutes())
-                .createdAt(event.getCreatedAt())
-                .updatedAt(event.getUpdatedAt())
+                .visibility(event.getVisibility())
+                .classId(event.getClassId())
+                .createdAt(event.getCreatedDate())
+                .updatedAt(event.getUpdatedDate())
                 .build();
     }
 }

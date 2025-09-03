@@ -104,4 +104,21 @@ public class CalendarController {
         calendarService.updateAssignmentEventStatus(assignmentId, studentId);
         return ResponseEntity.ok().build();
     }
+    
+    @GetMapping("/student/events")
+    @Operation(summary = "학생의 학급 일정 조회", description = "학생의 개인 일정과 학급 전체 일정을 함께 조회합니다")
+    public ResponseEntity<List<CalendarEventResponse>> getStudentClassEvents(
+            @RequestParam Long studentId,
+            @RequestParam Long classId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+        log.info("학생 학급 일정 조회: studentId={}, classId={}, period={} ~ {}", 
+                studentId, classId, startDate, endDate);
+        
+        List<CalendarEventResponse> events = calendarService.getStudentClassEvents(
+                studentId, classId, startDate, endDate);
+        
+        return ResponseEntity.ok(events);
+    }
 }

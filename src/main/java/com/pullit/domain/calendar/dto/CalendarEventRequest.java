@@ -46,4 +46,11 @@ public class CalendarEventRequest {
     private Boolean reminder = false;
     
     private Integer reminderMinutes;
+    
+    // 일정 공개 범위 (PERSONAL: 개인, CLASS_WIDE: 학급 전체)
+    @Builder.Default
+    private CalendarEvent.EventVisibility visibility = CalendarEvent.EventVisibility.PERSONAL;
+    
+    // 학급 ID (학급 전체 일정인 경우 필수)
+    private Long classId;
 }
