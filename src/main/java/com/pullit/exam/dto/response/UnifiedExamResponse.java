@@ -1,6 +1,9 @@
 package com.pullit.exam.dto.response;
 
 import com.pullit.exam.enums.ExamVisibility;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -10,6 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UnifiedExamResponse {
     
     /**
@@ -230,6 +234,7 @@ public class UnifiedExamResponse {
     /**
      * TestWizard 시험인지 확인
      */
+    @JsonIgnore
     public boolean isTestWizardExam() {
         return "TESTWIZARD".equals(examType);
     }
@@ -237,6 +242,7 @@ public class UnifiedExamResponse {
     /**
      * 사용자 생성 시험인지 확인
      */
+    @JsonIgnore
     public boolean isUserCreatedExam() {
         return "USER_CREATED".equals(examType);
     }
@@ -244,6 +250,7 @@ public class UnifiedExamResponse {
     /**
      * 공개 시험인지 확인
      */
+    @JsonIgnore
     public boolean isPublic() {
         return ExamVisibility.PUBLIC.equals(visibility);
     }
@@ -251,6 +258,7 @@ public class UnifiedExamResponse {
     /**
      * 학교 공개 시험인지 확인
      */
+    @JsonIgnore
     public boolean isSchoolVisible() {
         return ExamVisibility.SCHOOL.equals(visibility);
     }
@@ -258,6 +266,7 @@ public class UnifiedExamResponse {
     /**
      * 비공개 시험인지 확인
      */
+    @JsonIgnore
     public boolean isPrivate() {
         return ExamVisibility.PRIVATE.equals(visibility);
     }
@@ -265,6 +274,7 @@ public class UnifiedExamResponse {
     /**
      * 표시용 시험 타입 텍스트
      */
+    @JsonIgnore
     public String getExamTypeText() {
         if (isTestWizardExam()) {
             return "테스트위자드";
@@ -277,6 +287,7 @@ public class UnifiedExamResponse {
     /**
      * 표시용 공개 범위 텍스트
      */
+    @JsonIgnore
     public String getVisibilityText() {
         if (visibility == null) return "비공개";
 
@@ -290,5 +301,24 @@ public class UnifiedExamResponse {
             default:
                 return "비공개";
         }
+    }
+
+    /**
+     * Backward-compatibility for cached JSON that accidentally included a boolean property named "public"
+     * due to a previous boolean getter (isPublic). Accept and ignore this field on deserialization.
+     */
+    @JsonProperty("public")
+    public void setPublicFlag(Boolean ignored) {
+        // no-op: kept only to consume legacy cached field
+    }
+
+    @JsonProperty("private")
+    public void setPrivateFlag(Boolean ignored) {
+        // no-op
+    }
+
+    @JsonProperty("schoolVisible")
+    public void setSchoolVisibleFlag(Boolean ignored) {
+        // no-op
     }
 }
